@@ -1,0 +1,1278 @@
+================================================================================
+  KEYRING  -  PASSWORD VAULT
+  Complete Application & Deployment Guide
+================================================================================
+
+  Version        1.0.0
+  Build date     7 November 2026
+  App type       Progressive Web App (PWA), installable, offline-first
+  Platforms      Android, iPhone/iPad, Windows, macOS, Linux
+  Dependencies   None. No framework, no CDN, no external fonts.
+  Backend        None. Your device is the server.
+  Accounts       None. No sign-up, no sync service, no telemetry.
+
+  This document covers:
+    1.  What this application is
+    2.  What it does
+    3.  How your data is protected
+    4.  What it cannot protect you from
+    5.  File-by-file breakdown
+    6.  Running it on your own computer
+    7.  DEPLOYING IT FOR A REAL INSTALL   <- the main section
+    8.  Installing it on your phone
+    9.  Moving your vault to a new phone
+    10. Day-to-day usage
+    11. Settings explained
+    12. Updating the app after you change code
+    13. Customisation you might want
+    14. Troubleshooting
+    15. Testing and development commands
+    16. Known limitations and honest FAQ
+    17. Pre-flight checklist before you trust it with real passwords
+    Appendix A: What is actually stored on disk
+    Appendix B: Backup file format
+    Appendix C: Exact file manifest
+
+
+================================================================================
+1. WHAT THIS APPLICATION IS
+================================================================================
+
+Keyring is a self-contained password manager that runs entirely inside your web
+browser and installs to your phone's home screen like a native app.
+
+There is no company behind it, no cloud, and no server that ever sees your data.
+The application is a set of static files: HTML, CSS, JavaScript and images. You
+can host them anywhere, or nowhere at all. Everything - the encryption, the
+search, the password generator, the backup - happens on the device in your hand.
+
+Because it is a Progressive Web App (PWA), one single build covers Android,
+iPhone, and desktop. You install it by visiting a URL, not by downloading from an
+app store. After the first visit it works with no internet connection at all.
+
+The practical consequences:
+
+  * Nobody can lock you out, charge you a subscription, or shut down the service.
+  * There is no "forgot password" email, because there is no account.
+  * There is also no support desk that can recover your vault. Read section 3 and
+    section 17 before you commit real passwords to it.
+
+
+================================================================================
+2. WHAT IT DOES
+================================================================================
+
+  SAVING
+    - Store a login with: title, username or email, password, website,
+      category, free-form tags, and a notes field.
+    - Unlimited entries. Practical limit is your browser's storage quota
+      (typically 5-10 MB, which is thousands of entries).
+    - "Add" is reachable from the floating + button, the empty-state button,
+      and a long-press shortcut on the installed app icon (Android).
+
+  COPYING
+    - One-tap copy for username, password, website, and notes - both from the
+      list and from the detail sheet.
+    - Clipboard auto-wipe: copied passwords are cleared from the clipboard after
+      a delay you choose (Never / 15s / 30s / 60s / 2min). Default 30 seconds.
+    - Falls back to a legacy copy method if the modern clipboard API is
+      unavailable, so it works on older mobile browsers too.
+
+  EDITING
+    - Every field is editable after saving.
+    - Each entry shows when it was added and how long ago it was updated.
+    - Editing preserves the original creation timestamp.
+
+  DELETING
+    - Delete is behind a confirmation dialog with an explicit warning that it
+      cannot be undone without a backup.
+    - Deletion is immediate and permanent on that device.
+
+  FINDING
+    - Instant search across title, username, website, notes, category and tags.
+    - Category chips with live counts (All / Favorites / Email / Banking /
+      Social / Work / Shopping / Dev / Other / General).
+    - Favourite entries pinned behind a Favorites chip.
+    - Three sort orders, cycled with one button: Recent (by update time),
+      A-Z (alphabetical), Category (grouped, then alphabetical).
+    - Keyboard shortcut Ctrl/Cmd+K focuses the search box.
+
+  GENERATING PASSWORDS
+    - Mode 1, Random: length 8-64, toggles for a-z, A-Z, 0-9 and symbols,
+      optional "avoid look-alike characters" (excludes l, I, O, 0, 1).
+    - Mode 2, Passphrase: 3-8 words from a curated word list, with options for
+      capitalisation and a trailing number.
+    - Guarantees at least one character from every class you enable.
+    - Uses crypto.getRandomValues with rejection sampling, so there is no
+      modulo bias.
+    - Live entropy meter with five bands: Very weak, Weak, Fair, Strong,
+      Excellent.
+    - The generator can be opened standalone, or from inside the entry form;
+      "Use this password" fills the form and restores your draft.
+
+  VAULT HEALTH
+    - Flags passwords that are weak (estimated entropy below 45 bits) and
+      passwords reused across entries.
+    - Shows counts in the list header and in Settings.
+
+  SECURITY CONTROLS
+    - Master password required every time the app opens.
+    - Auto-lock after 1 / 5 / 15 / 30 / 60 minutes of inactivity, or Off.
+      Default 5 minutes. Also locks immediately when you return to a tab that
+      has been in the background longer than the auto-lock window.
+    - Manual lock button in the header.
+    - Passwords are masked in the list. In the detail sheet they stay masked
+      until you tap the eye, and re-mask automatically after 30 seconds.
+    - Master password can be changed at any time; the whole vault is re-keyed.
+
+  BACKUP AND TRANSFER
+    - Export produces a single encrypted .json file, named
+      keyring-backup-YYYY-MM-DD-HHMM.json.
+    - The file is encrypted with your master password, so it is safe to send
+      over WhatsApp, email, Drive, AirDrop or a USB cable.
+    - Three export routes: download, share sheet (on phones that support
+      sharing files), or copy the text to the clipboard.
+    - Import accepts that file (or pasted text) and offers two modes:
+        Merge    - keep what is on this device, add anything new.
+                   Duplicates (same title + username + password) are skipped.
+        Replace  - wipe this vault and restore exactly the backup's contents.
+    - Importing the same backup twice is safe.
+
+  OTHER
+    - Works completely offline after the first load.
+    - Dark theme, mobile-first layout, safe-area aware (iPhone notch / home bar).
+    - Two-column card grid on tablets and desktops.
+    - Full keyboard navigation and visible focus rings.
+    - Zero network requests at runtime. You can verify this yourself in the
+      browser's Network tab.
+
+
+================================================================================
+3. HOW YOUR DATA IS PROTECTED
+================================================================================
+
+  THE SHORT VERSION
+    Your master password is turned into an encryption key. That key encrypts
+    everything. Without the master password the stored data is meaningless.
+
+  THE MECHANISM, PRECISELY
+
+    Key derivation
+      Algorithm   PBKDF2
+      Hash        SHA-256
+      Iterations  310,000   (OWASP-recommended order of magnitude)
+      Salt        16 random bytes, generated once per vault, stored alongside
+                  the ciphertext, regenerated whenever the master password
+                  changes.
+
+    Encryption
+      Algorithm   AES-256-GCM  (authenticated encryption)
+      Key         256-bit, derived from PBKDF2 above
+      IV          12 random bytes, freshly generated for every single save
+      Key object  Created as a NON-EXTRACTABLE CryptoKey. JavaScript can use it
+                  but cannot read the raw key bytes back out of it.
+
+    Integrity
+      GCM produces an authentication tag. If even one byte of the stored
+      ciphertext is altered, decryption fails loudly instead of silently
+      returning corrupted data. A wrong master password also fails here - the
+      app cannot tell "wrong password" from "tampered file", and treats both as
+      a refusal.
+
+    What is inside the ciphertext
+      Everything: the entries, the tags, and also all of your settings
+      (auto-lock time, clipboard delay, generator preferences). Settings live
+      inside the encrypted payload specifically so that the stored blob does
+      not leak your preferences to anybody who can read the file.
+
+    What is outside the ciphertext
+      Only what is needed to derive the key: the version number, the KDF
+      parameters (algorithm, hash, iteration count), the salt, and the IV.
+      None of that reveals anything about your passwords.
+
+    What is never written down
+      Your master password. Not in localStorage, not in a cookie, not in the
+      IndexedDB, not in memory after you lock. It exists only long enough to
+      derive the key; the derived key is then the only thing held in memory,
+      and it is discarded on lock.
+
+    Verified by test
+      The automated test suite asserts that the entry titles, usernames and
+      passwords do not appear anywhere in localStorage after saving. It also
+      asserts that no plaintext structure leaks into the stored blob.
+
+  WHY THIS IS RESPECTABLE FOR A SELF-HOSTED TOOL
+    - The primitives are the same ones real password managers use: PBKDF2 +
+      AES-GCM, implemented by the browser's own WebCrypto, not hand-rolled.
+    - 310,000 PBKDF2 iterations makes offline brute-force guessing expensive.
+    - GCM integrity means silent corruption or tampering cannot go unnoticed.
+    - Every save uses a fresh random IV with the same key - GCM's normal,
+      safe pattern.
+    - The encryption key cannot be extracted by any script, including a
+      hypothetical one injected into the page.
+
+  HONEST COMPARISON
+    This is intentionally simpler than a commercial manager. It does not have a
+    separately encrypted per-entry key hierarchy, it does not re-encrypt on a
+    schedule, and it does not defend against a compromised device. What it does
+    have over the cloud alternative is the only thing that really matters for
+    most people: your vault never leaves hardware you control.
+
+
+================================================================================
+4. WHAT IT CANNOT PROTECT YOU FROM
+================================================================================
+
+  Read this. A password manager that overstates its guarantees is worse than
+  no password manager.
+
+  1. A FORGOTTEN MASTER PASSWORD
+     There is no reset, no recovery code, no security question, no support
+     email. This is the design, not an oversight - any reset mechanism would
+     also be a backdoor. If you lose the master password, the vault is gone.
+     If you lose the master password but you kept a backup file, that file is
+     also gone - it is encrypted with the same password.
+     Mitigation: choose a master password you can remember, write it on paper
+     and store it somewhere physically safe, and export backups.
+
+  2. A COMPROMISED DEVICE
+     Malware, a rooted or jailbroken phone, an installed keylogger, or someone
+     watching over your shoulder while a password is revealed. Encryption at
+     rest does not help once the attacker is inside the running app.
+
+  3. CLEARING BROWSER DATA
+     If you clear site data for this app, or the browser evicts storage under
+     pressure, the vault is deleted. On iOS, Safari can evict storage for sites
+     you rarely open - installing to the home screen greatly reduces this risk,
+     and regular exports cover it.
+
+  4. UNSECURE CONTEXTS
+     The app requires HTTPS (or localhost). See section 7 - this is a browser
+     requirement for the crypto and the offline cache, not just a preference.
+
+  5. SHARED OR PUBLIC COMPUTERS
+     Do not open your vault on a machine you do not trust, and never leave it
+     unlocked. Auto-lock limits the damage but does not eliminate it.
+
+  6. FUTURE YOU
+     Nothing here stops you from saving a password in a WhatsApp message, a
+     spreadsheet, or on a sticky note. The vault only protects what you put in
+     the vault.
+
+  WHAT IT IS DEFINITELY GOOD FOR
+     Replacing reused passwords with unique ones, keeping a private record that
+     no company can read or lose, and moving a full vault between phones with a
+     single encrypted file.
+
+
+================================================================================
+5. FILE-BY-FILE BREAKDOWN
+================================================================================
+
+  Everything you need to deploy is inside the "keyring" folder. You only need
+  the six items marked DEPLOY; the rest is for you as the developer.
+
+  keyring/
+    index.html                   [DEPLOY]  12 KB
+        The entire interface: lock screen, app shell, sheets/modals, and an
+        inline SVG icon sprite. No external stylesheet or script links beyond
+        the local ones.
+
+    manifest.webmanifest         [DEPLOY]  1.3 KB
+        PWA metadata: app name, icons, theme colour, standalone display mode,
+        and an "Add a password" app-icon shortcut.
+
+    sw.js                        [DEPLOY]  3 KB
+        Service worker. Pre-caches every app file so the app opens with no
+        network. Network-first for page loads, cache-first for assets.
+        IMPORTANT: contains CACHE_VERSION, which you must bump when you change
+        app files. See section 12.
+
+    assets/css/app.css           [DEPLOY]  30 KB
+        All styling. Dark theme, mobile-first, safe-area insets, bottom-sheet
+        layout on phones, centred modal on desktop.
+
+    assets/js/crypto.js          [DEPLOY]  8.7 KB
+        Key derivation (PBKDF2), encryption/decryption (AES-GCM), secure random
+        helpers, password and passphrase generators, entropy estimation.
+
+    assets/js/storage.js         [DEPLOY]  18 KB
+        The vault: encrypted envelope read/write, create/unlock/lock, CRUD,
+        settings, backup export and import, master password change, wipe.
+        Also the storage probe and the in-memory fallback used in preview
+        windows.
+
+    assets/js/pwa.js             [DEPLOY]  1.7 KB
+        Install prompt capture and service worker registration.
+
+    assets/js/app.js             [DEPLOY]  73 KB
+        All UI logic: the lock screen, list rendering, search and filters,
+        every sheet (entry form, detail, generator, settings, export, import,
+        delete confirm, wipe, install help), the toast system, clipboard
+        handling, and auto-lock timers.
+
+    icons/                       [DEPLOY]  ~156 KB total
+        icon-192.png, icon-512.png        standard app icons
+        maskable-512.png                  Android adaptive icon (safe zone kept)
+        apple-touch-icon.png, icon-180.png  iOS home screen icons
+        icon-1024.png                     high-res source
+        icon.svg                          vector, used as the favicon
+
+    README.md                              Markdown version of much of this
+    package.json, package-lock.json        Only for the developer test scripts.
+                                           NOT needed on a server.
+
+    tools/                                 Developer-only, do not deploy.
+        make_icons.py            Regenerates every icon from one design.
+        build-standalone.mjs     Builds the single-file version.
+        test-logic.mjs           67 crypto/storage tests.
+        test-ui.mjs              64 DOM tests against the real index.html.
+        test-standalone.mjs      Smoke test for the single-file build.
+        screenshots.mjs          Playwright walkthrough, 19 screenshots.
+
+    shots/                                 19 reference screenshots.
+
+  OUTSIDE THE FOLDER
+    Keyring-standalone.html      142 KB
+        The entire application - CSS, JS and a data-URI icon - inlined into one
+        HTML file. Open it by double-clicking; email it; put it on a USB stick.
+        It works fully as a web page. It cannot install as a home-screen app
+        (that needs the folder version with manifest + service worker).
+    Keyring.zip
+        The deployable folder plus the standalone build, zipped. Excludes the
+        node_modules folder used only for testing.
+
+  TOTAL DEPLOYABLE WEIGHT: about 344 KB, including all icons.
+
+
+================================================================================
+6. RUNNING IT ON YOUR OWN COMPUTER
+================================================================================
+
+  No build step. No npm install. It is a static site.
+
+  QUICKEST WAY (Python, already on macOS and Linux)
+
+      cd keyring
+      python3 -m http.server 8899 --bind 0.0.0.0
+
+      Then open:  http://localhost:8899
+
+  IF YOU PREFER NODE
+
+      cd keyring
+      npm start
+      # same thing: python3 -m http.server 8899 --bind 0.0.0.0
+
+  IF YOU HAVE PHP
+
+      cd keyring
+      php -S 0.0.0.0:8899
+
+  WHY LOCALHOST IS SPECIAL
+      http://localhost and http://127.0.0.1 count as "secure contexts" in every
+      browser, so WebCrypto and service workers both work there. That is why
+      local testing works over plain HTTP while a phone on your Wi-Fi will not.
+      See section 7 for that trap.
+
+  IMPORTANT NOTE ABOUT THE IN-APP PREVIEW
+      If you open index.html inside a sandboxed preview pane (some editors and
+      chat tools show one), the pane may block localStorage. Keyring detects
+      this and shows a yellow banner: "Preview mode - not saved". Everything
+      still works, but the vault lives in memory and vanishes on reload.
+      Open the URL in a real browser tab to get normal behaviour.
+
+  OPENING THE FILE DIRECTLY (file://)
+      Double-clicking index.html works for trying the app out, but that is not
+      a secure context on most browsers. You will likely see the red banner
+      "Encryption unavailable". Use a local server or the hosted version.
+
+
+================================================================================
+7. DEPLOYING IT FOR A REAL INSTALL
+================================================================================
+
+  ------------------------------------------------------------------------------
+  7.0  THE ONE RULE: THE APP MUST BE SERVED OVER HTTPS
+  ------------------------------------------------------------------------------
+
+  Browsers only expose crypto.subtle (the WebCrypto API) and service workers in
+  a "secure context". A secure context means one of:
+
+        https://anything
+        http://localhost  or  http://127.0.0.1
+
+  It does NOT include http://192.168.1.50:8899 (a phone talking to your laptop
+  over Wi-Fi). If you serve the app that way, Keyring will refuse to create a
+  vault and will show a red banner: "Encryption unavailable. This page is not a
+  secure context."
+
+  So there are two ways to get a real install on a phone:
+
+        A) Put it on a host that gives you HTTPS.   (recommended, permanent)
+        B) Use a temporary HTTPS tunnel for testing. (see 7.6)
+
+  Every option in 7.1 - 7.5 gives you HTTPS automatically. All of them are free
+  for this purpose.
+
+  ------------------------------------------------------------------------------
+  7.1  OPTION 1: GITHUB PAGES   (free, permanent, no credit card)
+  ------------------------------------------------------------------------------
+
+  Best if you want a stable URL you control and you are comfortable with Git or
+  the GitHub website. Result: https://YOURNAME.github.io/keyring/
+
+  Via the website, no command line:
+
+    1. Sign in to github.com and click "New repository".
+    2. Name it: keyring
+    3. Set visibility to PUBLIC.
+         - On a free GitHub account, Pages only serves public repositories.
+         - This is fine and safe: the repository contains only the app's code,
+           never your vault. Your passwords live on your device.
+         - Do NOT ever commit an exported backup .json file to a public repo.
+    4. Click "Create repository".
+    5. On the empty repo page click "uploading an existing file".
+    6. Open your "keyring" folder, select ALL files and folders inside it
+       (index.html, manifest.webmanifest, sw.js, assets/, icons/ ...), and drag
+       them into the browser.
+         - Important: upload the CONTENTS of the keyring folder, so that
+           index.html sits at the repository root. Do not upload the keyring
+           folder itself, or your URL becomes /keyring/keyring/.
+         - You can skip README.md, package.json and tools/ if you want.
+    7. Type a commit message and click "Commit changes".
+    8. Go to Settings (top of the repo) -> Pages (left sidebar).
+    9. Under "Build and deployment":
+         Source:       Deploy from a branch
+         Branch:       main        Folder: / (root)
+   10. Click Save. Wait 1-3 minutes. Refresh the page.
+   11. GitHub shows: "Your site is live at https://YOURNAME.github.io/keyring/"
+
+  Via the command line:
+
+      cd keyring
+      git init
+      git add index.html manifest.webmanifest sw.js assets icons
+      git commit -m "Keyring password vault"
+      git branch -M main
+      git remote add origin https://github.com/YOURNAME/keyring.git
+      git push -u origin main
+      # then enable Pages in Settings -> Pages as in steps 8-10
+
+  Notes:
+    - All paths inside the app are relative ("assets/js/app.js", "./"), so it
+      works whether it is served from a domain root or from /keyring/.
+    - GitHub Pages serves HTTPS automatically.
+    - To update the app later: upload the changed files and bump CACHE_VERSION
+      in sw.js (section 12).
+
+  ------------------------------------------------------------------------------
+  7.2  OPTION 2: NETLIFY DROP   (fastest - about 60 seconds, no account needed
+                                   to start)
+  ------------------------------------------------------------------------------
+
+  Best if you want the URL right now and do not want to think about Git.
+
+    1. Open https://app.netlify.com/drop
+    2. Drag your ENTIRE "keyring" FOLDER onto the page.
+       (Here you drag the folder itself, not the contents.)
+    3. Netlify uploads it and immediately shows a live HTTPS URL such as
+       https://calm-panda-12345.netlify.app
+    4. That URL is live and installable right away.
+    5. Create a free account to keep the site permanently and to rename it:
+         Site configuration -> Change site name -> keyring-yourname
+       Result: https://keyring-yourname.netlify.app
+
+  Or with the CLI (better for repeat deploys):
+
+      npm install -g netlify-cli
+      cd keyring
+      netlify deploy --prod --dir .
+
+  Notes:
+    - Netlify serves index.html automatically for the root URL.
+    - Drag-and-drop deploys are replaced wholesale on each new drop.
+    - Free tier is more than enough; this app serves a few hundred kilobytes.
+
+  ------------------------------------------------------------------------------
+  7.3  OPTION 3: CLOUDFLARE PAGES   (free, fast, generous)
+  ------------------------------------------------------------------------------
+
+    1. Sign in at https://dash.cloudflare.com
+    2. Go to Workers & Pages -> Create -> Pages -> Upload assets.
+    3. Name the project, then drag the "keyring" folder (or the contents) in.
+    4. Click Deploy. You get https://your-project.pages.dev
+    5. HTTPS and global CDN come automatically.
+
+  Or with Git: Create -> Pages -> Connect to Git -> pick the repo ->
+  Build command: leave empty -> Output directory: leave empty (root).
+
+  ------------------------------------------------------------------------------
+  7.4  OPTION 4: VERCEL
+  ------------------------------------------------------------------------------
+
+      npm install -g vercel
+      cd keyring
+      vercel --prod
+
+  Or drag the folder into https://vercel.com/new. You get
+  https://your-project.vercel.app with HTTPS. No build command or output
+  directory is needed - it is a static site.
+
+  ------------------------------------------------------------------------------
+  7.5  OPTION 5: YOUR OWN WEB HOSTING / SERVER
+  ------------------------------------------------------------------------------
+
+  Any hosting that serves static files over HTTPS works: shared cPanel hosting,
+  a VPS with nginx, a Synology NAS with a certificate, an S3 bucket behind
+  CloudFront, and so on.
+
+  Upload the contents of the keyring folder so that index.html is reachable at
+  the URL you want, then make sure HTTPS is on. Minimal nginx example:
+
+      server {
+          listen 443 ssl;
+          server_name vault.example.com;
+
+          ssl_certificate     /etc/letsencrypt/live/vault.example.com/fullchain.pem;
+          ssl_certificate_key /etc/letsencrypt/live/vault.example.com/privkey.pem;
+
+          root /var/www/keyring;
+          index index.html;
+
+          # The service worker must not be cached by the browser
+          location = /sw.js {
+              add_header Cache-Control "no-cache, no-store, must-revalidate";
+          }
+
+          location / {
+              try_files $uri $uri/ /index.html;
+          }
+      }
+
+  Get a free certificate with:
+      sudo certbot --nginx -d vault.example.com
+
+  Two things matter on your own host:
+    - Serve over HTTPS. Plain HTTP will not allow the vault to be created.
+    - Send sw.js with no-cache so app updates are picked up promptly.
+
+  Optional but nice - a very strict Content-Security-Policy, because this app
+  loads nothing external at all:
+
+      add_header Content-Security-Policy "default-src 'self'; img-src 'self'
+          data:; style-src 'self' 'unsafe-inline'; script-src 'self';
+          connect-src 'none'; base-uri 'none'; form-action 'none';
+          frame-ancestors 'none'" always;
+
+    (Nginx lets a quoted string span several lines, so the directive above is
+    valid as written - the line breaks are inside the quotes. If you would
+    rather keep it on a single line, that works identically.)
+
+  ------------------------------------------------------------------------------
+  7.6  TESTING ON YOUR PHONE RIGHT NOW, WITHOUT DEPLOYING (HTTPS tunnel)
+  ------------------------------------------------------------------------------
+
+  If you just want to try the real install experience on your phone before
+  picking a host, expose your local server through a temporary HTTPS tunnel.
+
+  With Cloudflare Tunnel (no account needed for a quick tunnel):
+
+      # terminal 1
+      cd keyring
+      python3 -m http.server 8899 --bind 0.0.0.0
+
+      # terminal 2
+      cloudflared tunnel --url http://localhost:8899
+      # prints a URL like https://random-words-1234.trycloudflare.com
+
+  With ngrok:
+
+      ngrok http 8899
+
+  Open the printed HTTPS URL on your phone. It is a secure context, so the app
+  installs and the service worker registers normally. The tunnel dies when you
+  close it, and the URL changes each time, so treat this as a rehearsal, not a
+  home. Your vault survives because it lives on the phone, not on the host -
+  but you will need the same HTTPS origin (or a backup file) to reach it again.
+
+  ------------------------------------------------------------------------------
+  7.7  DEPLOY CHECKLIST
+  ------------------------------------------------------------------------------
+
+      [ ] index.html is at the root of the deployed URL
+      [ ] assets/ and icons/ folders uploaded with their contents intact
+      [ ] manifest.webmanifest and sw.js present
+      [ ] The URL starts with https://
+      [ ] Opening the URL shows the "Create your master password" screen
+      [ ] No red "Encryption unavailable" banner
+      [ ] No yellow "Preview mode" banner
+      [ ] (Optional) Verified in the browser Network tab that the app makes no
+          third-party requests
+
+
+================================================================================
+8. INSTALLING IT ON YOUR PHONE
+================================================================================
+
+  Once it is on an HTTPS URL, installation takes a few taps.
+
+  ------------------------------------------------------------------------------
+  ANDROID  (Chrome, Edge, Samsung Internet, Brave)
+  ------------------------------------------------------------------------------
+    Method 1 - in-app button
+      1. Open the URL.
+      2. Tap "Install" in the header (download icon), or the install banner.
+      3. Confirm "Install".
+
+    Method 2 - browser menu
+      1. Open the URL.
+      2. Tap the three-dot menu.
+      3. Choose "Install app" or "Add to Home screen".
+      4. Confirm.
+
+    Result: a Keyring icon on the home screen and in the app drawer. It opens
+    full screen with no address bar and runs offline.
+
+    Note: Chrome only fires the install prompt when the site meets its criteria
+    (HTTPS, a manifest, a service worker, and a bit of engagement). Until then
+    the in-app Install button shows illustrated manual instructions instead,
+    which is expected behaviour, not a bug.
+
+  ------------------------------------------------------------------------------
+  iPHONE / iPAD  (Safari)
+  ------------------------------------------------------------------------------
+    1. Open the URL in SAFARI specifically.
+       In-app browsers (inside WhatsApp, Instagram, Gmail, Slack) cannot add to
+       the home screen. If you arrived from a link, tap "Open in Safari".
+    2. Tap the Share icon (square with an arrow) in the toolbar.
+    3. Scroll down and tap "Add to Home Screen".
+    4. Name it Keyring (or whatever you like) and tap "Add".
+    5. Launch it from the home screen. It opens full screen and works offline.
+
+    Note: iOS does not expose an install prompt to web pages, so the in-app
+    Install button shows these same steps as a visual guide. That is normal.
+
+  ------------------------------------------------------------------------------
+  DESKTOP  (Chrome, Edge, Brave)
+  ------------------------------------------------------------------------------
+    Look for the small install icon at the right end of the address bar, or use
+    menu -> "Install Keyring". It becomes a standalone window with its own
+    icon in the taskbar or dock.
+
+  ------------------------------------------------------------------------------
+  AFTER INSTALLING
+  ------------------------------------------------------------------------------
+    - The install banner disappears (Keyring detects standalone mode).
+    - The service worker takes over and the app works with aeroplane mode on.
+    - Test it: turn on flight mode, close the app, reopen it. It should open
+      straight to the lock screen.
+    - Updating: when you redeploy new files, the installed app picks them up on
+      a later launch. See section 12.
+
+
+================================================================================
+9. MOVING YOUR VAULT TO A NEW PHONE
+================================================================================
+
+  This is the whole point of the backup feature. The plan works from Android to
+  iPhone, iPhone to Android, or phone to desktop, because the file format is
+  identical everywhere.
+
+  STEP 1 - EXPORT ON THE OLD PHONE
+    1. Unlock Keyring.
+    2. Tap the gear icon (Settings).
+    3. Under "Backup & transfer", tap Export.
+    4. Tap "Download backup file".
+       You now have keyring-backup-YYYY-MM-DD-HHMM.json in your Downloads.
+    5. (Alternative routes, same file:)
+         - "Share to another app" - opens the system share sheet so you can send
+           it straight to WhatsApp/Drive/email.
+         - "Copy backup text" - puts the JSON on the clipboard if you prefer
+           pasting it into a note.
+
+  STEP 2 - GET THE FILE TO THE NEW PHONE
+    Anything works: WhatsApp message to yourself, Google Drive, iCloud Drive,
+    email attachment, AirDrop, or a USB cable. The file is encrypted with your
+    master password, so the transport does not need to be private. What matters
+    is that nobody also knows your master password.
+
+  STEP 3 - INSTALL KEYRING ON THE NEW PHONE
+    Follow section 8. Use the SAME URL you used before if possible.
+
+  STEP 4 - IMPORT
+    1. Open Keyring on the new phone. It will ask you to create a master
+       password. You can either:
+         - set a temporary one (you can change it later in Settings), or
+         - set the same one you use everywhere, which is simpler.
+    2. Go to Settings -> Import.
+    3. Tap "Backup file" and pick the .json file
+       (or paste the text and skip this).
+    4. In "Password used for that backup", type the master password that was
+       active ON THE OLD PHONE WHEN YOU EXPORTED.
+       This matters if you have ever changed your master password - a backup
+       always needs the password it was made with, not the current one.
+    5. "How to bring it in":
+         Merge   - keeps whatever is already on this phone and adds everything
+                   new from the file. Use this for a fresh phone, or to combine
+                   two vaults.
+         Replace - deletes what is on this phone and restores the backup
+                   exactly. Use this when you want a perfect copy.
+    6. Tap Import. You will see "N imported, M skipped as duplicates".
+
+  STEP 5 - VERIFY
+    Search for a couple of known entries and reveal one password to confirm the
+    contents arrived intact.
+
+  STEP 6 - CLEAN UP THE OLD PHONE (optional)
+    Settings -> Danger zone -> Delete vault -> type DELETE. Do this only after
+    you are sure the new phone has everything or you still hold a good backup.
+
+  GOOD HABITS
+    - Export after every big batch of new passwords.
+    - Keep at least one backup somewhere you would still have it if the phone
+      were lost (a cloud drive is fine - the file is encrypted).
+    - Do not store the master password in the same place as the backup.
+
+
+================================================================================
+10. DAY-TO-DAY USAGE
+================================================================================
+
+  FIRST RUN
+    1. Pick a master password of at least 8 characters. 12 or more is strongly
+       recommended, and the app refuses anything scoring below 45 bits.
+    2. Prefer a passphrase you can type on a phone, e.g. "copper-harbor-lantern-42".
+       Length beats symbol soup.
+    3. Write it down on paper and store that paper somewhere safe. Not in a
+       note on the same phone.
+
+  ADDING AN ENTRY
+    Tap + -> fill in title (required) -> username/email -> password (or tap the
+    dice to generate one) -> website -> category -> tags -> notes -> Save.
+
+  USING AN ENTRY
+    - Tap the card body to open the detail sheet.
+    - Tap the eye to reveal the password; it re-masks after 30 seconds.
+    - Tap the copy icons to copy the username, password, website or notes.
+    - "Password" and "User" buttons on the card itself copy without opening.
+
+  SEARCHING
+    Type in the search box. It matches title, username, website, notes, category
+    and tags, case-insensitively. Ctrl/Cmd+K jumps to it. The X clears it.
+
+  ORGANISING
+    - Star an entry to add it to Favorites.
+    - Assign a category; chips appear automatically for categories in use.
+    - Tags are comma-separated and searchable; they show in the detail sheet.
+
+  LOCKING
+    Tap the padlock in the header. The vault locks automatically after the idle
+    period set in Settings (default 5 minutes), and also if you background the
+    app for longer than that window.
+
+  CHANGING YOUR MASTER PASSWORD
+    Settings -> Master password -> Change.
+    You must enter the current password. Everything is re-encrypted with a new
+    salt and a new key.
+    Remember: backups made before the change still need the OLD password. Keep
+    a note of which password each backup needs, or re-export after changing.
+
+
+================================================================================
+11. SETTINGS EXPLAINED
+================================================================================
+
+  SECURITY
+    Auto-lock            Off / 1 / 5 / 15 / 30 / 60 minutes.        Default: 5
+                         How long the vault stays unlocked while idle.
+    Clear clipboard      Never / 15s / 30s / 60s / 2min.            Default: 30s
+                         How long a copied password survives in the clipboard
+                         before the app overwrites it. Overwriting requires the
+                         browser to allow clipboard writes without a gesture;
+                         where it is blocked, the copy has already happened and
+                         the app says so with a toast.
+    Master password      Opens the change-password sheet.
+
+  BACKUP & TRANSFER
+    Export backup        Encrypted .json file, ready to move to another phone.
+    Import backup        Merge or replace, in this vault.
+    Install on this      Shows installation steps for this device.
+    phone
+
+  VAULT HEALTH
+    Stored entries       Total, favorites, weak count, reused count, and the
+                         size of the encrypted blob on disk.
+    Encryption           Confirms AES-256-GCM, PBKDF2-SHA256, 310,000 rounds.
+    Storage              "On device" (persistent) or "In memory" (a preview
+                         window blocked storage - nothing will be saved).
+
+  DANGER ZONE
+    Delete vault         Erases the encrypted blob from this device. Requires
+                         typing DELETE. Irreversible without a backup.
+
+  GENERATOR PREFERENCES
+    Not in Settings - the generator remembers your last used options
+    automatically (length, character classes, passphrase mode, word count) and
+    restores them next time.
+
+
+================================================================================
+12. UPDATING THE APP AFTER YOU CHANGE CODE
+================================================================================
+
+  The service worker serves files from a cache first, so a browser may keep
+  using old files even after you upload new ones. To push an update:
+
+    1. Edit whatever you like (styles, categories, text).
+    2. Open sw.js and change the cache name, for example:
+
+           const CACHE_VERSION = 'keyring-v1';      ->  'keyring-v2';
+
+       Any new value works. This is what tells browsers the old cache is stale.
+    3. Re-upload the changed files to your host.
+    4. On each device: close the installed app completely and reopen it, or
+       reload twice. The new service worker installs, takes control, and deletes
+       the old cache.
+
+  If a device seems stuck on an old version:
+    - Desktop: open DevTools -> Application -> Service Workers ->
+      "Update" then "Unregister", and reload.
+    - Phone: Settings -> Apps -> Keyring -> Storage -> Clear cache
+      (clearing *cache* is safe; do not "clear data" unless you have a backup,
+      because that removes the vault).
+
+  Your vault is never affected by updating files, because it lives in
+  localStorage under a key the app does not overwrite on load.
+
+
+================================================================================
+13. CUSTOMISATION YOU MIGHT WANT
+================================================================================
+
+  CATEGORIES
+    File: assets/js/storage.js
+    Line: const CATEGORIES = ['General', 'Email', 'Banking', 'Social', 'Work',
+                              'Shopping', 'Dev', 'Other'];
+    Add, remove or rename freely. Existing entries with a removed category fall
+    back to 'Other' when they are next saved.
+
+  STARTER CATEGORY FOR NEW ENTRIES
+    File: assets/js/app.js
+    Find: (d.category || 'General')
+    Change 'General' to whichever category you want preselected.
+
+  ENCRYPTION STRENGTH
+    File: assets/js/crypto.js
+    Line: const KDF_ITERATIONS = 310000;
+    Raise it on a fast modern phone for more resistance to offline guessing.
+    600000 is a reasonable upper bound before unlocks start feeling slow on old
+    hardware. Do not lower it.
+    Note: the iteration count is stored inside each vault blob, so changing this
+    only affects vaults created afterwards and new backups - existing vaults
+    keep unlocking at their original setting.
+
+  THEME COLOURS
+    File: assets/css/app.css
+    Change the variables at the top: --accent, --accent-2, --bg, --surface.
+    The app icons are separate; see below.
+
+  APP ICON
+    Edit tools/make_icons.py (colours C1 and C2), then run:
+        python3 tools/make_icons.py
+    It rewrites every PNG in icons/ from the same vector description.
+
+  APP NAME AND SHORTCUT
+    File: manifest.webmanifest
+    "name" and "short_name" control the installed app's label. Also update the
+    <title> and apple-mobile-web-app-title in index.html.
+
+  REBUILDING THE SINGLE-FILE VERSION
+    After any source change:
+        node tools/build-standalone.mjs
+    This regenerates Keyring-standalone.html with everything inlined.
+
+
+================================================================================
+14. TROUBLESHOOTING
+================================================================================
+
+  RED BANNER: "Encryption unavailable"
+    The page is not a secure context. You are on http:// with an IP address.
+    Fix: use https://, or http://localhost on the same machine.
+    Consequences while in this state: no vault can be created, because the
+    browser will not provide WebCrypto.
+
+  YELLOW BANNER: "Preview mode - not saved"
+    Something is blocking localStorage: a sandboxed preview pane, or a browser
+    in a locked-down private mode.
+    Fix: open the app in a normal browser tab, or install it.
+    In this mode the app works but forgets everything on reload.
+
+  THE INSTALL BUTTON DOES NOTHING ON ANDROID
+    Chrome has not yet offered its install prompt (it needs HTTPS, a service
+    worker, and a little usage). The app shows manual instructions instead:
+    use the three-dot menu -> "Install app".
+
+  NO "ADD TO HOME SCREEN" OPTION ON IPHONE
+    You are in an in-app browser. Open the page in Safari itself. iOS also puts
+    the option inside the Share sheet, not in a normal menu.
+
+  "WRONG MASTER PASSWORD" AND I AM SURE IT IS RIGHT
+    - Check the keyboard language, caps lock, and trailing spaces.
+    - If you changed your master password, the old one no longer works.
+    - If you restored a browser backup, the password is from that point in time.
+    - If the browser cleared site data and a backup was auto-restored by a
+      sync feature, the password that matches is the one that was current when
+      that data was captured.
+
+  MY ENTRIES DISAPPEARED
+    Likely causes, in order of probability:
+      1. Cleared browsing data for this site.
+      2. iOS Safari evicted website storage (rare, more likely for sites you
+         rarely open - installing to the home screen reduces this).
+      3. A different browser, different browser profile, or private window -
+         localStorage is per-origin AND per-profile.
+      4. The vault was erased from Settings -> Danger zone.
+    Recovery: import your latest backup file.
+
+  IMPORT SAYS "THAT PASSWORD DOES NOT OPEN THIS BACKUP"
+    You need the master password that was active when the file was exported,
+    not your current one. If you changed the password after exporting, use the
+    old one for that file.
+
+  IMPORT SAYS "THIS DOES NOT LOOK LIKE A KEYRING BACKUP"
+    You picked the wrong file, or the file was truncated (email clients and some
+    messaging apps can mangle large JSON attachments). Re-send it as a document
+    rather than inline text, or paste the JSON contents manually.
+
+  THE APP WILL NOT UPDATE
+    Bump CACHE_VERSION in sw.js, redeploy, then fully close and reopen the
+    installed app. See section 12.
+
+  COPIED PASSWORD STAYS IN THE CLIPBOARD
+    Clearing the clipboard programmatically requires browser permission that
+    some platforms only grant during a user gesture. Where it is refused, the
+    copy itself still worked and the app does not claim otherwise. Set the
+    delay to a short value and paste promptly.
+
+  VAULT FEELS SLOW TO UNLOCK
+    310,000 PBKDF2 rounds take roughly 0.3-1.5 seconds depending on the device.
+    That delay is the security feature working. On a very old phone it can feel
+    long; do not lower the iteration count to fix it.
+
+  EVERYTHING IS BLANK AFTER I REINSTALLED THE APP
+    Reinstalling the PWA does not affect storage as long as it is the same
+    origin and the same browser profile. If storage was also cleared, restore
+    from a backup file.
+
+
+================================================================================
+15. TESTING AND DEVELOPMENT COMMANDS
+================================================================================
+
+  These require Node.js (and Python for the icon and server scripts). They are
+  for you as the developer; the deployed app needs none of them.
+
+      cd keyring
+      npm install                 # jsdom for the DOM tests (dev only)
+
+      npm test                    # 67 crypto + storage tests
+      npm run test:ui             # 64 DOM tests against the real index.html
+      npm run test:all            # both
+
+      node tools/test-standalone.mjs     # smoke test of the single-file build
+      node tools/build-standalone.mjs    # rebuild the single-file build
+      python3 tools/make_icons.py        # regenerate all icons
+
+      npm start                   # serve on http://localhost:8899
+
+  Optional, needs a browser engine installed:
+      node tools/screenshots.mjs  # Playwright walkthrough, writes shots/*.png
+
+  CURRENT STATUS
+      67 logic tests         pass
+      64 UI tests            pass
+       1 standalone smoke    pass
+      ----------------------------
+     131 automated checks, zero console errors.
+
+  What the tests actually cover:
+    - PBKDF2 determinism, wrong-key rejection, tamper rejection
+    - generator length, class coverage, ambiguity filtering, uniqueness
+    - entropy scoring bands
+    - vault create / lock / unlock, wrong password handling
+    - CRUD, tag normalisation, timestamps, favourites
+    - assertion that no plaintext reaches localStorage
+    - settings merge and persistence inside the ciphertext
+    - backup export naming, parse validation, wrong-password rejection
+    - merge de-duplication, replace mode, restore into a fresh vault
+    - master password change re-keys and old password stops working
+    - the full UI flow: setup, add, search, filters, detail, reveal, edit,
+      generator, settings, export sheet, import validation, delete, lock/unlock
+    - two regression suites for bugs found during development: sheet close
+      buttons must not submit forms, and stale listeners must not leak between
+      sheets.
+
+
+================================================================================
+16. KNOWN LIMITATIONS AND HONEST FAQ
+================================================================================
+
+  IS THIS AS SECURE AS A COMMERCIAL PASSWORD MANAGER?
+    The cryptography is standard and correctly used: PBKDF2-SHA256 with a high
+    iteration count and AES-256-GCM with a fresh IV per save. What commercial
+    products add is process: independent audits, encrypted sync, browser
+    extensions with native autofill, secure sharing, breach monitoring, and an
+    organisation that can be held accountable. If your threat model is "I reuse
+    the same password everywhere and I want unique ones stored privately", this
+    is a solid answer. If your threat model is a targeted attacker with
+    resources, use Bitwarden or 1Password.
+
+  WHY NO BROWSER AUTOFILL?
+    Autofill requires a browser extension or native app integration. This is a
+    plain web app, so you copy and paste. That is a deliberate trade for
+    portability and zero maintenance.
+
+  WHY DOES IT NEED HTTPS?
+    WebCrypto and service workers are restricted to secure contexts by browser
+    design. There is no way around it, and you would not want one.
+
+  CAN I SYNC BETWEEN TWO PHONES?
+    Not automatically. There is no server, so there is nothing to sync through.
+    The workflow is export on one, import on the other. You can do this as often
+    as you like.
+
+  CAN I HAVE IT ON MY PHONE AND MY LAPTOP?
+    Yes - open the same URL on both. Each device has its own independent vault.
+    To keep them aligned, export from the one you changed and import into the
+    other with Merge.
+
+  CAN I EXPORT TO CSV FOR EXCEL?
+    Not by design. A plaintext CSV would defeat the point. If you genuinely need
+    one, you can read the decrypted data from the browser console after
+    unlocking:
+        JSON.parse(JSON.stringify(window.KeyringStore.getEntries()))
+    and save that yourself. Understand that whatever you save is plaintext.
+
+  WHAT HAPPENS IF TWO TABS ARE OPEN?
+    Each tab holds its own unlocked copy in memory. Editing in both can lead to
+    the last save winning. Treat it as one-tab-at-a-time software.
+
+  HOW MANY ENTRIES CAN IT HOLD?
+    Thousands. The limit is the browser's localStorage quota, typically 5-10 MB
+    per origin. A typical entry costs a few hundred bytes encrypted.
+
+  DOES IT WORK IN A PRIVATE / INCOGNITO WINDOW?
+    Partially. Some browsers allow localStorage there but wipe it on close; some
+    block it entirely, and Keyring will show "Preview mode". Do not keep a real
+    vault in private mode.
+
+  IS THERE ANY VERSION THAT WORKS WITHOUT A BROWSER?
+    Keyring-standalone.html is one HTML file with no server needed - but it
+    still runs in a browser. For a non-browser binary you would need to port it
+    to Electron or Capacitor, which is out of scope here.
+
+  WHAT IF I FORGET EVERYTHING AND HAVE NO BACKUP?
+    The vault is unrecoverable. That is the correct behaviour for an encryption
+    tool with no backdoor. Section 17 exists to stop this happening.
+
+  CAN YOU ADD FEATURE X?
+    Everything is in readable, commented, dependency-free JavaScript across four
+    files. Categories, colours, fields and defaults are all a one-line change.
+
+
+================================================================================
+17. PRE-FLIGHT CHECKLIST BEFORE YOU TRUST IT WITH REAL PASSWORDS
+================================================================================
+
+  Do these in order, once, and you are in good shape.
+
+    [ ] 1. Deploy to HTTPS (section 7). Confirm the URL starts with https://.
+    [ ] 2. Open it on your computer. Confirm you see "Create your master
+           password" and no red or yellow banner.
+    [ ] 3. Choose a strong, memorable master password. Write it on paper.
+           Store the paper somewhere physically safe and separate from your
+           phone.
+    [ ] 4. Create the vault. Add one real login. Lock. Unlock. Confirm it is
+           still there.
+    [ ] 5. Export a backup (Settings -> Export -> Download). Confirm the file
+           downloaded and its name ends in .json.
+    [ ] 6. Install on your phone (section 8). Confirm the home-screen icon
+           launches it full screen.
+    [ ] 7. Put the phone in aeroplane mode. Open the app. Confirm it still
+           opens to the lock screen and unlocks.
+    [ ] 8. Import the backup you made in step 5 onto the phone (Merge or
+           Replace). Confirm the entry appears.
+    [ ] 9. Delete the test entry and confirm deletion works.
+    [ ] 10. Decide where ongoing backups live. A cloud drive is fine - the file
+            is encrypted - as long as your master password is not written in the
+            same place.
+    [ ] 11. Set auto-lock and clipboard delay to values you actually want
+            (defaults are 5 minutes and 30 seconds).
+    [ ] 12. Only now start moving real passwords in, ideally a few at a time,
+            exporting a backup after each batch.
+
+  The two failure modes that actually happen to people are, in order:
+     1. Forgetting the master password.
+     2. Never exporting a backup.
+  Everything else in this document is secondary to those two.
+
+
+================================================================================
+APPENDIX A: WHAT IS ACTUALLY STORED ON DISK
+================================================================================
+
+  Location: localStorage, under a single key.
+
+      Key:    keyring.vault.v1
+      Value:  one JSON object, 667 bytes for an empty vault
+              (about 290 bytes per entry, so 1,000 entries is under 300 KB)
+
+  Structure:
+
+      {
+        "v": 1,
+        "app": "keyring-password-vault",
+        "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 310000 },
+        "salt": "<base64, 16 bytes>",
+        "iv":   "<base64, 12 bytes>",
+        "data": "<base64 AES-256-GCM ciphertext>",
+        "createdAt": 1762500000000,
+        "updatedAt": 1762500000000
+      }
+
+  "data" decrypts to:
+
+      {
+        "entries": [
+          {
+            "id": "16 hex characters",
+            "title": "...",
+            "username": "...",
+            "password": "...",
+            "url": "...",
+            "notes": "...",
+            "category": "Email",
+            "tags": ["work", "mail"],
+            "favorite": true,
+            "createdAt": 1762500000000,
+            "updatedAt": 1762500000000
+          }
+        ],
+        "settings": {
+          "autoLockMinutes": 5,
+          "clipboardClearSeconds": 30,
+          "sortMode": "recent",
+          "generator": { "...": "..." },
+          "installBannerDismissed": false
+        },
+        "createdAt": 1762500000000,
+        "vaultId": "16 hex characters"
+      }
+
+  To see it yourself: unlock the app, open DevTools, and run
+
+      JSON.parse(localStorage.getItem('keyring.vault.v1'))
+
+  You will see that everything readable is metadata. The entries are opaque.
+  To confirm, search the raw string for one of your own usernames - it will not
+  be there.
+
+
+================================================================================
+APPENDIX B: BACKUP FILE FORMAT
+================================================================================
+
+  A backup is the encryption envelope plus identifying wrappers. It carries the
+  exact same ciphertext, so it needs the same master password.
+
+      {
+        "format": "keyring-backup",
+        "formatVersion": 1,
+        "app": "Keyring Password Vault",
+        "exportedAt": "2026-11-07T04:33:12.000Z",
+        "entries": 42,
+        "envelope": {
+          "v": 1,
+          "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 310000 },
+          "salt": "...",
+          "iv": "...",
+          "data": "..."
+        }
+      }
+
+  Import accepts either this wrapper or a bare envelope, which is why you can
+  also paste a raw envelope if you extracted one.
+
+  Filename: keyring-backup-YYYY-MM-DD-HHMM.json
+  The only plaintext in the file is the date, the entry count, and the app name.
+
+
+================================================================================
+APPENDIX C: EXACT FILE MANIFEST
+================================================================================
+
+  Files to upload (total ~344 KB):
+
+      index.html                             12,429 bytes
+      manifest.webmanifest                    1,302 bytes
+      sw.js                                   2,977 bytes
+      assets/css/app.css                     30,060 bytes
+      assets/js/crypto.js                     8,730 bytes
+      assets/js/storage.js                   18,216 bytes
+      assets/js/pwa.js                        1,743 bytes
+      assets/js/app.js                       73,554 bytes
+      icons/icon.svg                            622 bytes
+      icons/icon-180.png                     14,134 bytes
+      icons/icon-192.png                     12,099 bytes
+      icons/icon-512.png                     31,763 bytes
+      icons/icon-1024.png                    68,499 bytes
+      icons/maskable-512.png                 18,664 bytes
+      icons/apple-touch-icon.png             10,221 bytes
+
+  Do NOT need to upload:
+
+      README.md, package.json, package-lock.json, tools/, shots/
+
+  Delivered alongside the folder:
+
+      Keyring-standalone.html               145,505 bytes  (single file)
+      Keyring.zip                             whole project, zipped
+
+  Source code line counts:
+
+      index.html                  183 lines
+      sw.js                        95 lines
+      assets/css/app.css        1,006 lines
+      assets/js/crypto.js         253 lines
+      assets/js/storage.js        585 lines
+      assets/js/pwa.js             51 lines
+      assets/js/app.js          1,828 lines
+      ------------------------------------
+      total                     4,001 lines
+
+
+================================================================================
+  END OF GUIDE
+================================================================================
+
+  Quick reference:
+
+      Run locally      cd keyring && python3 -m http.server 8899
+                       then open http://localhost:8899
+
+      Deploy fastest   https://app.netlify.com/drop  and drop the folder in
+
+      Deploy freest    Upload to a public GitHub repo, Settings -> Pages ->
+                       main / (root)
+
+      Must be          https://  (localhost is the only exception)
+
+      Install          Android: menu -> Install app
+                       iPhone:  Safari -> Share -> Add to Home Screen
+
+      Move phones      Settings -> Export   ...   Settings -> Import
+
+      Back up often. Remember your master password. There is no reset.
+================================================================================

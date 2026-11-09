@@ -1,0 +1,4368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'self' data:; object-src 'none'; base-uri 'self';">
+<title>Keyring — Password Vault</title>
+<meta name="description" content="A private, offline password vault. Encrypted on your device with AES-256.">
+<meta name="theme-color" content="#0b0f19">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Keyring">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IktleXJpbmciPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzdjOWJmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyMmQzZWUiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE3IiBmaWxsPSJ1cmwoI2cpIi8+CiAgPHBhdGggZD0iTTMyIDEyLjVsMTIuNSA1LjJ2OS42YzAgOS40LTUuOCAxNi4yLTEyLjUgMTguOS02LjctMi43LTEyLjUtOS41LTEyLjUtMTguOXYtOS42TDMyIDEyLjV6IgogICAgICAgIGZpbGw9IiMwYTBlMTciIGZpbGwtb3BhY2l0eT0iMC4yMiIvPgogIDxjaXJjbGUgY3g9IjMyIiBjeT0iMjcuNSIgcj0iNC42IiBmaWxsPSIjZmZmIi8+CiAgPHBhdGggZD0iTTMyIDMwLjRsLTIuNyA4aDUuNHoiIGZpbGw9IiNmZmYiLz4KPC9zdmc+" type="image/svg+xml">
+<style>
+/* ============================================================
+   Keyring — Password Vault
+   Mobile-first, dark UI. No external fonts or assets.
+   ============================================================ */
+
+:root {
+  --bg: #0a0e17;
+  --bg-2: #0e1320;
+  --surface: #131a29;
+  --surface-2: #182136;
+  --surface-3: #1f2a42;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #e9eefb;
+  --text-dim: #9aa8c2;
+  --text-faint: #6b7891;
+  --accent: #7c9bff;
+  --accent-2: #22d3ee;
+  --accent-ink: #0a0e17;
+  --accent-soft: rgba(124, 155, 255, 0.12);
+  --danger: #ff6b81;
+  --danger-soft: rgba(255, 107, 129, 0.12);
+  --warn: #f5b759;
+  --gold: #f7c948;
+  --ok: #3ddc97;
+  --radius: 16px;
+  --radius-sm: 11px;
+  --shadow: 0 18px 45px -18px rgba(0, 0, 0, 0.85);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background:
+    radial-gradient(1000px 620px at 12% -8%, rgba(124, 155, 255, 0.16), transparent 62%),
+    radial-gradient(760px 520px at 92% 4%, rgba(34, 211, 238, 0.10), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+body.no-scroll { overflow: hidden; }
+body.sheet-open .banner { display: none; }
+
+h1, h2, h3, p { margin: 0; }
+button { font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+::selection { background: rgba(124, 155, 255, 0.35); }
+
+.hidden { display: none !important; }
+
+.icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+.icon.tiny { width: 14px; height: 14px; }
+
+/* ---------------- banner ---------------- */
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  padding: calc(10px + var(--sat)) 16px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #ffe9b5;
+  background: linear-gradient(180deg, rgba(245, 183, 89, 0.22), rgba(245, 183, 89, 0.10));
+  border-bottom: 1px solid rgba(245, 183, 89, 0.3);
+  backdrop-filter: blur(12px);
+}
+.banner strong { color: #ffdf8a; }
+.banner.err {
+  color: #ffd3da;
+  background: linear-gradient(180deg, rgba(255, 107, 129, 0.22), rgba(255, 107, 129, 0.10));
+  border-bottom-color: rgba(255, 107, 129, 0.34);
+}
+.banner.err strong { color: #ff9aa9; }
+
+/* ---------------- buttons ---------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.975); }
+.btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+.btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-ink);
+  box-shadow: 0 10px 26px -12px rgba(124, 155, 255, 0.85);
+}
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost { background: transparent; border-color: var(--border-strong); color: var(--text-dim); }
+.btn.ghost:hover { background: rgba(255, 255, 255, 0.04); color: var(--text); }
+.btn.danger { background: var(--danger-soft); color: var(--danger); border-color: rgba(255, 107, 129, 0.35); }
+.btn.danger:hover { background: rgba(255, 107, 129, 0.2); }
+.btn.danger.solid { background: var(--danger); color: #2a0a10; }
+.btn.block { width: 100%; }
+.btn.small { padding: 9px 13px; font-size: 13.5px; border-radius: 10px; }
+.btn .icon { width: 18px; height: 18px; }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex: none;
+}
+.icon-btn:hover { background: rgba(255, 255, 255, 0.055); color: var(--text); }
+.icon-btn:active { transform: scale(0.95); }
+.icon-btn.tiny-btn { width: 30px; height: 30px; border-radius: 9px; }
+.icon-btn.danger { color: var(--danger); }
+
+/* ---------------- gate ---------------- */
+.gate {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(28px + var(--sat)) calc(18px + var(--sar)) calc(28px + var(--sab)) calc(18px + var(--sal));
+}
+.gate-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 30px 24px 22px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(24, 33, 54, 0.9), rgba(15, 20, 33, 0.94));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.gate-logo { display: flex; justify-content: center; margin-bottom: 14px; }
+.logo { width: 64px; height: 64px; border-radius: 17px; box-shadow: 0 12px 30px -12px rgba(124, 155, 255, 0.8); }
+.logo.small { width: 30px; height: 30px; border-radius: 9px; box-shadow: none; flex: none; }
+.gate-title {
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.5px;
+  text-align: center;
+}
+.gate-tagline {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14.5px;
+  margin-top: 4px;
+}
+.gate-h2 {
+  font-size: 17px;
+  font-weight: 650;
+  margin-bottom: 6px;
+  letter-spacing: -0.2px;
+}
+.gate-form { margin-top: 22px; display: flex; flex-direction: column; gap: 13px; }
+.hint { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+.hint strong { color: #ffd9a0; font-weight: 600; }
+.hint.center { text-align: center; }
+.gate-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.form-error {
+  font-size: 13.5px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid rgba(255, 107, 129, 0.3);
+  padding: 9px 12px;
+  border-radius: 10px;
+}
+
+/* ---------------- fields ---------------- */
+.field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.field-label {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  background: rgba(9, 13, 22, 0.75);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 16px;
+  padding: 12px 13px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field textarea { resize: vertical; min-height: 74px; line-height: 1.5; }
+.field input::placeholder, .field textarea::placeholder { color: #5b6880; }
+.field input[type="file"] {
+  padding: 10px 12px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.field input[type="file"]::file-selector-button {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid var(--border-strong);
+  background: rgba(124, 155, 255, 0.14);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 11px;
+  margin-right: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.field input[type="file"]::file-selector-button:hover { background: rgba(124, 155, 255, 0.24); }
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: rgba(124, 155, 255, 0.65);
+  box-shadow: 0 0 0 3px rgba(124, 155, 255, 0.16);
+  background: rgba(9, 13, 22, 0.92);
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa8c2' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+.input-row { display: flex; align-items: center; gap: 6px; }
+.input-row input { flex: 1; min-width: 0; }
+.input-row .icon-btn { border: 1px solid var(--border-strong); background: rgba(9, 13, 22, 0.75); width: 44px; height: 44px; border-radius: 12px; }
+
+/* strength meter */
+.strength { display: flex; align-items: center; gap: 10px; margin-top: -4px; }
+.strength-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.strength-track i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 99px;
+  background: var(--danger);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.strength-label {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  min-width: 62px;
+  text-align: right;
+}
+
+/* ---------------- app shell ---------------- */
+.app { min-height: 100dvh; display: flex; flex-direction: column; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding: calc(10px + var(--sat)) calc(14px + var(--sar)) 10px calc(14px + var(--sal));
+  background: rgba(10, 14, 23, 0.82);
+  backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.top-actions { display: flex; align-items: center; gap: 2px; }
+
+.search-row {
+  position: relative;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+}
+.search-row .search-icon {
+  position: absolute;
+  left: 13px;
+  color: var(--text-faint);
+  pointer-events: none;
+  width: 18px;
+  height: 18px;
+}
+#search {
+  width: 100%;
+  padding: 11px 44px 11px 40px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+#search::placeholder { color: var(--text-faint); }
+#search:focus {
+  border-color: rgba(124, 155, 255, 0.5);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px rgba(124, 155, 255, 0.13);
+}
+#search::-webkit-search-cancel-button { display: none; }
+#search-clear { position: absolute; right: 5px; }
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.chips {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 2px 3px;
+  scrollbar-width: none;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-dim);
+  border-radius: 99px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+.chip .icon { width: 13px; height: 13px; }
+.chip:hover { color: var(--text); background: rgba(255, 255, 255, 0.07); }
+.chip.active {
+  background: linear-gradient(135deg, rgba(124, 155, 255, 0.9), rgba(34, 211, 238, 0.85));
+  color: var(--accent-ink);
+  border-color: transparent;
+  box-shadow: 0 6px 16px -8px rgba(124, 155, 255, 0.9);
+}
+.chip.active .icon { fill: currentColor; }
+.sort-btn {
+  flex: none;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-dim);
+  border-radius: 99px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sort-btn:hover { color: var(--text); }
+
+/* ---------------- list ---------------- */
+.list-wrap {
+  flex: 1;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 12px calc(14px + var(--sar)) calc(110px + var(--sab)) calc(14px + var(--sal));
+}
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 4px 10px;
+  font-size: 12px;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+.meta-row:empty { display: none; }
+
+.list { display: flex; flex-direction: column; gap: 9px; }
+@media (min-width: 900px) {
+  .app-shell, .topbar-inner, .list-wrap { width: 100%; max-width: 1080px; margin-left: auto; margin-right: auto; }
+  .topbar { padding-left: 0; padding-right: 0; }
+  .topbar-inner { padding-left: 14px; padding-right: 14px; }
+  .list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  .fab { right: max(18px, calc((100vw - 1080px) / 2 + 18px)); }
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(25, 34, 55, 0.92), rgba(17, 23, 38, 0.92));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  animation: cardIn 0.28s ease both;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.card:hover { border-color: rgba(124, 155, 255, 0.28); }
+.card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 10px;
+  cursor: pointer;
+}
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, hsl(var(--hue, 230) 78% 62%), hsl(calc(var(--hue, 230) + 42) 72% 48%));
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.card-text { flex: 1; min-width: 0; }
+.card-title-row { display: flex; align-items: center; gap: 7px; }
+.card-title {
+  font-size: 15.5px;
+  font-weight: 650;
+  letter-spacing: -0.15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cat-pill {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+.warn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex: none;
+  box-shadow: 0 0 0 3px rgba(245, 183, 89, 0.14);
+}
+.chip span { opacity: 0.62; font-variant-numeric: tabular-nums; font-size: 11.5px; }
+.card-user {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.card-pass { margin-top: 1px; font-size: 12px; letter-spacing: 2.5px; color: var(--text-faint); }
+.star-btn {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: #4b586f;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.star-btn:hover { color: var(--gold); background: rgba(247, 201, 72, 0.08); }
+.star-btn.active { color: var(--gold); }
+.star-btn.active .icon { fill: var(--gold); }
+
+.card-actions {
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.14);
+}
+.card-actions button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.card-actions button + button { border-left: 1px solid var(--border); }
+.card-actions button:hover { background: rgba(255, 255, 255, 0.05); color: var(--text); }
+.card-actions button .icon { width: 15px; height: 15px; }
+.card-actions button.danger:hover { background: var(--danger-soft); color: var(--danger); }
+
+/* empty state */
+.empty {
+  text-align: center;
+  padding: 40px 20px 30px;
+  color: var(--text-dim);
+  animation: cardIn 0.3s ease both;
+}
+.empty-art { width: 128px; height: 128px; margin: 0 auto 8px; }
+.empty-art svg { width: 100%; height: 100%; }
+.empty h2 { font-size: 18px; color: var(--text); margin-bottom: 6px; letter-spacing: -0.3px; }
+.empty p { font-size: 13.5px; max-width: 300px; margin: 0 auto 18px; line-height: 1.55; }
+
+/* fab */
+.fab {
+  position: fixed;
+  right: calc(18px + var(--sar));
+  bottom: calc(20px + var(--sab));
+  width: 58px;
+  height: 58px;
+  border-radius: 19px;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 16px 36px -12px rgba(124, 155, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.15s ease, filter 0.15s ease;
+  z-index: 45;
+}
+.fab .icon { width: 26px; height: 26px; stroke-width: 2.4; }
+.fab:hover { filter: brightness(1.07); }
+.fab:active { transform: scale(0.94); }
+
+/* ---------------- overlay + sheet ---------------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(4, 7, 13, 0.66);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  padding-top: calc(24px + var(--sat));
+}
+.overlay.open { opacity: 1; }
+.overlay.hidden { display: none; }
+
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100dvh - var(--sat) - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: linear-gradient(180deg, #182136 0%, #111827 90%);
+  border: 1px solid var(--border-strong);
+  border-bottom: none;
+  border-radius: 24px 24px 0 0;
+  padding: 8px calc(18px + var(--sar)) calc(20px + var(--sab)) calc(18px + var(--sal));
+  box-shadow: 0 -24px 60px -20px rgba(0, 0, 0, 0.9);
+  transform: translateY(18px);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-overflow-scrolling: touch;
+}
+.overlay.open .sheet { transform: none; }
+.sheet::before {
+  content: "";
+  display: block;
+  width: 42px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.18);
+  margin: 6px auto 12px;
+}
+@media (min-width: 620px) {
+  .overlay { align-items: center; padding: 24px; }
+  .sheet { border-radius: 24px; border-bottom: 1px solid var(--border-strong); max-height: calc(100dvh - 48px); }
+  .sheet::before { display: none; }
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.sheet-head h2 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.sheet-head h2 .icon { color: var(--accent); }
+.sheet-sub { font-size: 13px; color: var(--text-dim); margin-top: -10px; margin-bottom: 14px; line-height: 1.5; }
+.sheet-form { display: flex; flex-direction: column; gap: 14px; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 420px) { .field-grid { grid-template-columns: 1fr; } }
+.sheet-actions { display: flex; gap: 10px; margin-top: 6px; }
+.sheet-actions .btn { flex: 1; }
+
+/* detail sheet */
+.detail-title-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.detail-title-row h2 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.detail-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 3px 9px;
+}
+.tag.accent { color: var(--accent); background: var(--accent-soft); border-color: rgba(124, 155, 255, 0.25); }
+
+.kv { display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
+.kv-row {
+  border: 1px solid var(--border);
+  background: rgba(9, 13, 22, 0.5);
+  border-radius: 13px;
+  padding: 10px 12px;
+}
+.kv-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 3px;
+}
+.kv-value-row { display: flex; align-items: center; gap: 8px; }
+.kv-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  word-break: break-all;
+  font-family: var(--mono);
+  font-size: 13.5px;
+}
+.kv-value.mono-lg { letter-spacing: 0.02em; }
+.kv-value.masked { letter-spacing: 3px; color: var(--text-dim); }
+.kv-value a { color: var(--accent-2); text-decoration: none; }
+.kv-value a:hover { text-decoration: underline; }
+.kv-actions { display: flex; gap: 2px; flex: none; }
+.kv-actions .icon-btn { width: 34px; height: 34px; border-radius: 10px; color: var(--text-dim); border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03); }
+.kv-text {
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+}
+.detail-foot { display: flex; gap: 10px; margin-top: 16px; }
+.detail-foot .btn { flex: 1; }
+.detail-times { font-size: 11.5px; color: var(--text-faint); margin-top: 12px; text-align: center; }
+
+/* settings */
+.settings-group { margin-bottom: 22px; }
+.settings-group h3 {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin: 0 2px 9px;
+}
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-item:last-child { border-bottom: none; }
+.settings-text { min-width: 0; }
+.settings-text .t { font-size: 14.5px; font-weight: 600; }
+.settings-text .s { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; line-height: 1.45; }
+.settings-item select {
+  background: rgba(9, 13, 22, 0.85);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 8px 30px 8px 11px;
+  font-size: 14px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa8c2' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  flex: none;
+}
+.settings-item .icon-btn { border: 1px solid var(--border); background: rgba(255, 255, 255, 0.03); }
+
+.switch { position: relative; width: 46px; height: 27px; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.13);
+  transition: background 0.18s ease;
+  pointer-events: none;
+}
+.switch span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #c7d1e4;
+  transition: transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1), background 0.18s ease;
+}
+.switch input:checked + span { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.switch input:checked + span::after { transform: translateX(19px); background: #0d1420; }
+.switch input:focus-visible + span { box-shadow: 0 0 0 3px rgba(124, 155, 255, 0.3); }
+
+.settings-card {
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: rgba(9, 13, 22, 0.35);
+  padding: 4px 14px;
+  overflow: hidden;
+}
+.about-line { font-size: 12.5px; color: var(--text-faint); display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 2px 2px; }
+.about-line b { color: var(--text-dim); font-weight: 600; }
+.storage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 650;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: rgba(61, 220, 151, 0.12);
+  color: var(--ok);
+  border: 1px solid rgba(61, 220, 151, 0.25);
+}
+.storage-pill.warn { background: rgba(245, 183, 89, 0.12); color: var(--warn); border-color: rgba(245, 183, 89, 0.3); }
+
+/* generator */
+.gen-output {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(9, 13, 22, 0.8);
+  border: 1px solid rgba(124, 155, 255, 0.35);
+  border-radius: 14px;
+  padding: 14px 14px;
+  min-height: 62px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.gen-value {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 17px;
+  letter-spacing: 0.03em;
+  word-break: break-all;
+  line-height: 1.4;
+  color: #d9e2ff;
+  min-height: 24px;
+}
+.gen-controls { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.gen-length-row { display: flex; align-items: center; gap: 12px; }
+.gen-length-row label { font-size: 13.5px; font-weight: 600; color: var(--text-dim); flex: none; }
+.gen-length-val {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 30px;
+  text-align: right;
+}
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 26px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)) no-repeat, rgba(255, 255, 255, 0.1);
+  background-size: var(--fill, 40%) 100%, 100% 100%;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: -8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+input[type="range"]::-moz-range-track { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); }
+input[type="range"]::-moz-range-progress { height: 6px; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border: none; border-radius: 50%; background: #fff; }
+
+.gen-toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gen-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 13.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.gen-toggle input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  flex: none;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-strong);
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.gen-toggle input:checked {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+}
+.gen-toggle input:checked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230a0e17' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 13px no-repeat;
+}
+.gen-toggle:has(input:checked) { color: var(--text); border-color: rgba(124, 155, 255, 0.4); background: var(--accent-soft); }
+.gen-actions { display: flex; gap: 10px; margin-top: 16px; }
+.gen-actions .btn { flex: 1; }
+.gen-strength { margin-top: 12px; }
+
+/* confirm dialog */
+.confirm-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid rgba(255, 107, 129, 0.3);
+}
+.confirm-icon .icon { width: 26px; height: 26px; }
+.confirm-icon.accent { background: var(--accent-soft); color: var(--accent); border-color: rgba(124, 155, 255, 0.3); }
+.confirm h2 { font-size: 19px; letter-spacing: -0.3px; margin-bottom: 6px; }
+.confirm p { font-size: 14px; color: var(--text-dim); line-height: 1.55; }
+.confirm .sheet-actions { margin-top: 20px; }
+
+/* toast */
+.toast-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: calc(92px + var(--sab));
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  width: max-content;
+  max-width: min(92vw, 420px);
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(28, 38, 60, 0.97);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 550;
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.9);
+  animation: toastIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  backdrop-filter: blur(10px);
+}
+.toast .icon { width: 17px; height: 17px; color: var(--ok); }
+.toast.err .icon { color: var(--danger); }
+.toast.out { animation: toastOut 0.2s ease forwards; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes toastOut {
+  to { opacity: 0; transform: translateY(6px) scale(0.97); }
+}
+
+/* focus visibility */
+:focus-visible { outline: 2px solid rgba(124, 155, 255, 0.85); outline-offset: 2px; }
+button:focus:not(:focus-visible) { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ============ inline icon sprite ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c9bff"/><stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24M1 1l22 22"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.95 5.98 6.6.96-4.78 4.66 1.13 6.57L12 17.67l-5.9 3.1 1.13-6.57L2.45 9.54l6.6-.96z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4.5A2.5 2.5 0 0 1 10.5 2h3A2.5 2.5 0 0 1 16 4.5V6M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9.2 11.6l2 2 3.6-3.9"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="16.5" r="4.5"/><path d="M10.9 13.1 21 3M17.5 6.5l2.5 2.5M14.5 9.5l2.5 2.5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M3.6 9a9 9 0 0 1 14.8-3.4L21 8M21 15a9 9 0 0 1-14.8 3.4L3 16"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 9v5M12 17.2v.1"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 11 23l-9-9L11.6 4.4A2 2 0 0 1 13 3.8l6.8.3.3 6.8a2 2 0 0 1-.5 1.5z" transform="translate(1 -2)"/><circle cx="16.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<div id="banner" class="banner hidden" role="status"></div>
+
+<!-- ============ GATE (setup / unlock) ============ -->
+<section id="gate" class="gate" aria-label="Lock screen">
+  <div class="gate-card">
+    <div class="gate-logo" aria-hidden="true">
+      <svg viewBox="0 0 64 64" class="logo">
+        <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#logoGrad)"/>
+        <path d="M32 12.5l12.5 5.2v9.6c0 9.4-5.8 16.2-12.5 18.9-6.7-2.7-12.5-9.5-12.5-18.9v-9.6L32 12.5z" fill="rgba(11,15,25,.22)"/>
+        <circle cx="32" cy="27.5" r="4.6" fill="#fff"/>
+        <path d="M32 30.4l-2.7 8h5.4z" fill="#fff"/>
+      </svg>
+    </div>
+    <h1 class="gate-title">Keyring</h1>
+    <p class="gate-tagline">Your passwords, sealed on this device.</p>
+
+    <form id="setup-form" class="gate-form hidden" autocomplete="off" novalidate>
+      <h2 class="gate-h2">Create your master password</h2>
+      <p class="hint">This password encrypts your entire vault. It never leaves this device and <strong>cannot be recovered</strong> if you forget it.</p>
+      <label class="field">
+        <span class="field-label">Master password</span>
+        <div class="input-row">
+          <input id="setup-password" type="password" required autocomplete="new-password" spellcheck="false" placeholder="At least 8 characters">
+          <button type="button" class="icon-btn" data-toggle-pass="setup-password" aria-label="Show password"><svg class="icon"><use href="#i-eye"/></svg></button>
+        </div>
+      </label>
+      <div class="strength" id="setup-strength">
+        <div class="strength-track"><i></i></div>
+        <span class="strength-label">—</span>
+      </div>
+      <label class="field">
+        <span class="field-label">Confirm password</span>
+        <input id="setup-confirm" type="password" required autocomplete="new-password" spellcheck="false" placeholder="Type it again">
+      </label>
+      <p class="form-error hidden" id="setup-error" role="alert"></p>
+      <button type="submit" class="btn primary block" id="setup-submit">Create vault</button>
+    </form>
+
+    <form id="unlock-form" class="gate-form hidden" autocomplete="off" novalidate>
+      <h2 class="gate-h2">Unlock your vault</h2>
+      <label class="field">
+        <span class="field-label">Master password</span>
+        <div class="input-row">
+          <input id="unlock-password" type="password" required autocomplete="current-password" spellcheck="false" placeholder="Enter master password">
+          <button type="button" class="icon-btn" data-toggle-pass="unlock-password" aria-label="Show password"><svg class="icon"><use href="#i-eye"/></svg></button>
+        </div>
+      </label>
+      <p class="form-error hidden" id="unlock-error" role="alert"></p>
+      <button type="submit" class="btn primary block" id="unlock-submit">Unlock</button>
+      <p class="hint center">Forgot it? For your safety there is no reset — restore from a backup file if you made one.</p>
+    </form>
+
+    <p class="gate-foot"><svg class="icon tiny"><use href="#i-lock"/></svg> AES-256-GCM · PBKDF2-SHA256 · works offline</p>
+  </div>
+</section>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app" class="app hidden">
+  <header class="topbar">
+   <div class="topbar-inner">
+    <div class="topbar-row">
+      <div class="brand">
+        <svg viewBox="0 0 64 64" class="logo small" aria-hidden="true" width="30" height="30">
+          <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#logoGrad)"/>
+          <circle cx="32" cy="27.5" r="4.6" fill="#fff"/>
+          <path d="M32 30.4l-2.7 8h5.4z" fill="#fff"/>
+        </svg>
+        <span>Keyring</span>
+      </div>
+      <div class="top-actions">
+        <button id="btn-install" class="icon-btn hidden" title="Install app" aria-label="Install app"><svg class="icon"><use href="#i-download"/></svg></button>
+        <button id="btn-generator" class="icon-btn" title="Password generator" aria-label="Password generator"><svg class="icon"><use href="#i-dice"/></svg></button>
+        <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings"><svg class="icon"><use href="#i-settings"/></svg></button>
+        <button id="btn-lock" class="icon-btn" title="Lock vault" aria-label="Lock vault"><svg class="icon"><use href="#i-lock"/></svg></button>
+      </div>
+    </div>
+
+    <div class="search-row">
+      <svg class="icon search-icon"><use href="#i-search"/></svg>
+      <input id="search" type="search" placeholder="Search title, user, tag…" autocomplete="off" spellcheck="false" aria-label="Search vault">
+      <button id="search-clear" class="icon-btn tiny-btn hidden" aria-label="Clear search"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+
+    <div class="filter-bar">
+      <div id="chips" class="chips" role="tablist" aria-label="Categories"></div>
+      <button id="sort-btn" class="sort-btn" title="Change sort order">Recent</button>
+    </div>
+   </div>
+  </header>
+
+  <main class="list-wrap">
+    <div id="meta-row" class="meta-row"></div>
+    <section id="list" class="list" aria-live="polite"></section>
+
+    <div id="empty" class="empty hidden">
+      <div class="empty-art" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="rgba(124,155,255,.08)"/>
+          <circle cx="60" cy="60" r="36" fill="rgba(124,155,255,.10)"/>
+          <path d="M60 30l22 9v17c0 16.5-10 28.5-22 33-12-4.5-22-16.5-22-33V39l22-9z" fill="none" stroke="rgba(124,155,255,.6)" stroke-width="3" stroke-linejoin="round"/>
+          <circle cx="60" cy="56" r="7" fill="rgba(124,155,255,.8)"/>
+          <path d="M60 60.5l-4 13h8z" fill="rgba(124,155,255,.8)"/>
+        </svg>
+      </div>
+      <h2 id="empty-title">Your vault is empty</h2>
+      <p id="empty-msg">Add your first login and it will be encrypted before it touches storage.</p>
+      <button class="btn primary" id="empty-cta"><svg class="icon"><use href="#i-plus"/></svg> Add password</button>
+    </div>
+  </main>
+
+  <button id="fab" class="fab" aria-label="Add new password" title="Add new password">
+    <svg class="icon"><use href="#i-plus"/></svg>
+  </button>
+</div>
+
+<!-- ============ SHEET / MODAL ============ -->
+<div id="overlay" class="overlay hidden" aria-hidden="true">
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
+<div id="toast-wrap" class="toast-wrap" aria-live="polite"></div>
+
+<noscript><p style="padding:2rem;color:#e8edf7;text-align:center">Keyring needs JavaScript to encrypt and store your vault.</p></noscript>
+
+
+
+
+
+<script>window.KEYRING_STANDALONE = true;</script>
+<script>
+/* ==== assets/js/crypto.js ==== */
+/* ============================================================
+   Keyring — crypto layer
+   Everything here runs locally in the browser using WebCrypto.
+   No network calls, no third-party libraries, no plaintext ever
+   leaves memory in a persisted form.
+   ------------------------------------------------------------
+   Envelope format (what actually sits in localStorage):
+
+     {
+       v: 1,
+       kdf: { name: "PBKDF2", hash: "SHA-256", iterations: 310000 },
+       salt: "<base64, 16 bytes>",
+       iv:   "<base64, 12 bytes>",
+       data: "<base64 AES-256-GCM ciphertext>"
+     }
+
+   The AES key is derived from the master password + salt.
+   Wrong password -> GCM auth tag mismatch -> decrypt throws.
+   ============================================================ */
+
+const KeyringCrypto = (() => {
+  'use strict';
+
+  const KDF_ITERATIONS = 310000; // OWASP-recommended order of magnitude for PBKDF2-SHA256
+  const SALT_BYTES = 16;
+  const IV_BYTES = 12;
+
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  /* ---------- base64 helpers (chunked, safe for large vaults) ---------- */
+  function bufToB64(buf) {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
+    return btoa(binary);
+  }
+
+  function b64ToBuf(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  /* ---------- randomness ---------- */
+  function randomBytes(n) {
+    const out = new Uint8Array(n);
+    crypto.getRandomValues(out);
+    return out;
+  }
+
+  function randomInt(maxExclusive) {
+    if (maxExclusive <= 0) throw new Error('randomInt: max must be > 0');
+    // Rejection sampling — avoids modulo bias
+    const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive;
+    const buf = new Uint32Array(1);
+    for (;;) {
+      crypto.getRandomValues(buf);
+      if (buf[0] < limit) return buf[0] % maxExclusive;
+    }
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  /* ---------- key derivation ---------- */
+  async function deriveKey(password, saltBytes, iterations = KDF_ITERATIONS) {
+    const baseKey = await crypto.subtle.importKey(
+      'raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: saltBytes,
+        iterations,
+        hash: 'SHA-256',
+      },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,           // not extractable
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  /* ---------- encrypt / decrypt payload objects ---------- */
+  async function encryptJSON(key, obj) {
+    const iv = randomBytes(IV_BYTES);
+    const plaintext = enc.encode(JSON.stringify(obj));
+    const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+    return { iv: bufToB64(iv), data: bufToB64(cipher) };
+  }
+
+  async function decryptJSON(key, ivB64, dataB64) {
+    const iv = b64ToBuf(ivB64);
+    const data = b64ToBuf(dataB64);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return JSON.parse(dec.decode(plain));
+  }
+
+  /* ---------- password / passphrase generation ---------- */
+  const SETS = {
+    lowercase: 'abcdefghijkmnopqrstuvwxyz'.replace('l', ''),   // no l
+    uppercase: 'ABCDEFGHJKLMNPQRSTUVWXYZ'.replace('I', '').replace('O', ''), // no I, O
+    digits: '23456789',                                          // no 0, 1
+    symbols: '!@#$%^&*()-_=+[]{};:,.?/',
+  };
+
+  // Full sets used when ambiguity filtering is off
+  const FULL_SETS = {
+    lowercase: 'abcdefghijklmnopqrstuvwxyz',
+    uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    digits: '0123456789',
+    symbols: '!@#$%^&*()-_=+[]{};:,.?/',
+  };
+
+  function generatePassword(opts = {}) {
+    const {
+      length = 20,
+      lowercase = true,
+      uppercase = true,
+      digits = true,
+      symbols = true,
+      avoidAmbiguous = false,
+    } = opts;
+
+    const src = avoidAmbiguous ? SETS : FULL_SETS;
+    const pools = [];
+    if (lowercase) pools.push(src.lowercase);
+    if (uppercase) pools.push(src.uppercase);
+    if (digits) pools.push(src.digits);
+    if (symbols) pools.push(src.symbols);
+    if (!pools.length) pools.push(src.lowercase);
+
+    const len = Math.max(pools.length, Math.min(128, Math.max(4, length | 0)));
+    const all = pools.join('');
+
+    // Guarantee at least one character from each selected pool, then fill.
+    const chars = pools.map((p) => p[randomInt(p.length)]);
+    while (chars.length < len) chars.push(all[randomInt(all.length)]);
+
+    return shuffle(chars).join('');
+  }
+
+  const WORDS = [
+    'amber','anchor','apollo','apple','arrow','atlas','aurora','autumn','badger','bamboo',
+    'beacon','bison','blossom','breeze','bronze','cactus','canyon','cedar','cinder','citrus',
+    'clover','cobalt','comet','copper','coral','cosmos','cotton','cricket','crystal','dawn',
+    'delta','drift','eagle','ember','emerald','falcon','fable','fern','fjord','flint',
+    'forest','fossil','galaxy','garnet','glacier','granite','harbor','hazel','heron','hollow',
+    'indigo','ivory','jade','jasper','jungle','kite','lagoon','lantern','lark','lemon',
+    'lichen','lilac','linen','lotus','lunar','maple','marble','meadow','mesa','meteor',
+    'mint','monsoon','moss','nectar','nickel','nimbus','nova','oak','oasis','obsidian',
+    'olive','onyx','opal','orbit','orchid','otter','pebble','pepper','petal','pine',
+    'pixel','plum','polar','prairie','prism','pulsar','quartz','quill','raven','reef',
+    'ripple','robin','saffron','sage','sand','satin','scarlet','shadow','silver','solstice',
+    'sparrow','spruce','stellar','summit','sundial','sycamore','tango','thistle','thunder','tidal',
+    'timber','topaz','tulip','tundra','umber','valley','velvet','violet','walnut','willow',
+    'winter','zenith','zephyr','zinc',
+  ];
+
+  function generatePassphrase(opts = {}) {
+    const { words = 4, separator = '-', capitalize = true, addNumber = true } = opts;
+    const n = Math.max(3, Math.min(10, words | 0));
+    const pick = [];
+    for (let i = 0; i < n; i++) pick.push(WORDS[randomInt(WORDS.length)]);
+    let out = pick
+      .map((w) => (capitalize ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(separator);
+    if (addNumber) out += separator + randomInt(90) + 10;
+    return out;
+  }
+
+  /* ---------- strength estimation (entropy based, not naive rules) ---------- */
+  function estimateEntropyBits(password) {
+    if (!password) return 0;
+    const classes = [
+      /[a-z]/.test(password),
+      /[A-Z]/.test(password),
+      /[0-9]/.test(password),
+      /[^a-zA-Z0-9]/.test(password),
+    ].filter(Boolean).length;
+
+    // Rough per-character pool size
+    let pool = 0;
+    if (/[a-z]/.test(password)) pool += 26;
+    if (/[A-Z]/.test(password)) pool += 26;
+    if (/[0-9]/.test(password)) pool += 10;
+    if (/[^a-zA-Z0-9]/.test(password)) pool += 32;
+
+    let bits = password.length * Math.log2(Math.max(pool, 2));
+
+    // Penalise obvious repetition / sequences
+    if (/^(.)\1+$/.test(password)) bits *= 0.15;
+    else if (/(.)\1{2,}/.test(password)) bits *= 0.8;
+    if (/^(?:0123|1234|12345|123456|abcdef|qwerty|password|letmein|admin)/i.test(password)) bits *= 0.35;
+    if (/^\d+$/.test(password)) bits *= 0.6;
+    if (classes === 1 && password.length < 12) bits *= 0.75;
+
+    return Math.max(0, Math.round(bits));
+  }
+
+  function strengthLabel(bits) {
+    if (bits < 28) return { label: 'Very weak', level: 0 };
+    if (bits < 45) return { label: 'Weak', level: 1 };
+    if (bits < 60) return { label: 'Fair', level: 2 };
+    if (bits < 80) return { label: 'Strong', level: 3 };
+    return { label: 'Excellent', level: 4 };
+  }
+
+  /* ---------- misc ---------- */
+  function uid() {
+    const b = randomBytes(8);
+    return [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  function constantTimeEqual(a, b) {
+    if (a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  }
+
+  /* ---------- base32 decoding (RFC 4648) ---------- */
+  function base32ToBuf(base32Str) {
+    const clean = String(base32Str || '')
+      .replace(/[\s-]/g, '')
+      .toUpperCase();
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = 0;
+    let value = 0;
+    const bytes = [];
+
+    for (let i = 0; i < clean.length; i++) {
+      const idx = alphabet.indexOf(clean[i]);
+      if (idx === -1) continue;
+      value = (value << 5) | idx;
+      bits += 5;
+      if (bits >= 8) {
+        bytes.push((value >>> (bits - 8)) & 0xff);
+        bits -= 8;
+      }
+    }
+    return new Uint8Array(bytes);
+  }
+
+  /* ---------- TOTP (RFC 6238 / RFC 4226) ---------- */
+  async function generateTOTP(secret, epochMs = Date.now(), period = 30) {
+    if (!secret) return null;
+    let rawSecret = secret;
+    if (typeof secret === 'string' && secret.toLowerCase().startsWith('otpauth://')) {
+      try {
+        const u = new URL(secret);
+        rawSecret = u.searchParams.get('secret') || secret;
+      } catch {
+        const m = secret.match(/secret=([A-Za-z2-7]+)/i);
+        if (m) rawSecret = m[1];
+      }
+    }
+
+    const keyBytes = base32ToBuf(rawSecret);
+    if (!keyBytes || keyBytes.length === 0) return null;
+
+    const epochSec = Math.floor(epochMs / 1000);
+    const counter = Math.floor(epochSec / period);
+
+    const counterBuf = new ArrayBuffer(8);
+    const counterView = new DataView(counterBuf);
+    counterView.setUint32(0, Math.floor(counter / 0x100000000), false);
+    counterView.setUint32(4, counter >>> 0, false);
+
+    const hmacKey = await crypto.subtle.importKey(
+      'raw',
+      keyBytes,
+      { name: 'HMAC', hash: 'SHA-1' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', hmacKey, counterBuf);
+    const sigBytes = new Uint8Array(signature);
+    const offset = sigBytes[sigBytes.length - 1] & 0x0f;
+    const binary =
+      ((sigBytes[offset] & 0x7f) << 24) |
+      ((sigBytes[offset + 1] & 0xff) << 16) |
+      ((sigBytes[offset + 2] & 0xff) << 8) |
+      (sigBytes[offset + 3] & 0xff);
+
+    const otp = binary % 1000000;
+    const code = String(otp).padStart(6, '0');
+    const remaining = period - (epochSec % period);
+
+    return { code, remaining, period };
+  }
+
+  return {
+    KDF_ITERATIONS,
+    SALT_BYTES,
+    IV_BYTES,
+    bufToB64,
+    b64ToBuf,
+    randomBytes,
+    randomInt,
+    shuffle,
+    deriveKey,
+    encryptJSON,
+    decryptJSON,
+    generatePassword,
+    generatePassphrase,
+    estimateEntropyBits,
+    strengthLabel,
+    uid,
+    constantTimeEqual,
+    base32ToBuf,
+    generateTOTP,
+  };
+})();
+
+window.KeyringCrypto = KeyringCrypto;
+
+</script>
+<script>
+/* ==== assets/js/storage.js ==== */
+/* ============================================================
+   Keyring — storage layer
+   Owns the encrypted envelope in localStorage, the in-memory
+   decrypted vault while unlocked, settings, and backups.
+
+   Design notes
+   ------------
+   * Nothing sensitive is ever written unencrypted. The only
+     localStorage key holds {v, kdf, salt, iv, data}.
+   * Settings live *inside* the encrypted payload, so they can't
+     be used to fingerprint the vault before unlocking.
+   * The AES key lives only in this closure's memory and is
+     dropped on lock(). It is non-extractable, so it cannot be
+     read back out of the CryptoKey object.
+   ============================================================ */
+
+const KeyringStore = (() => {
+  'use strict';
+
+  const STORAGE_KEY = 'keyring.vault.v1';
+  const APP_ID = 'keyring-password-vault';
+  const C = window.KeyringCrypto;
+
+  const DEFAULT_SETTINGS = {
+    autoLockMinutes: 5,
+    clipboardClearSeconds: 30,
+    sortMode: 'recent',          // recent | az | category
+    generator: {
+      length: 20,
+      lowercase: true,
+      uppercase: true,
+      digits: true,
+      symbols: true,
+      avoidAmbiguous: false,
+      mode: 'password',          // password | passphrase
+      words: 4,
+    },
+    installBannerDismissed: false,
+  };
+
+  const CATEGORIES = [
+    'General', 'Email', 'Banking', 'Social', 'Work', 'Shopping', 'Dev', 'Other',
+  ];
+
+  /* -------------------- runtime state -------------------- */
+  let unlockSeq = 0;           // guards against overlapping unlock attempts
+  let key = null;              // CryptoKey while unlocked
+  let envelope = null;         // raw envelope object as stored
+  let vault = null;            // decrypted { entries, settings, ... }
+  let storageKind = 'checking';
+
+  /* -------------------- storage backend --------------------
+     Prefer localStorage. Some contexts (sandboxed iframes, hard
+     private-mode lockdowns) block it — in that case fall back to
+     memory so the app is still demo-able, and report the mode so
+     the UI can warn that nothing will be saved.
+     ---------------------------------------------------------- */
+  const memoryBackend = (function () {
+    const map = new Map();
+    return {
+      getItem: function (k) { return map.has(k) ? map.get(k) : null; },
+      setItem: function (k, v) { map.set(k, String(v)); },
+      removeItem: function (k) { map.delete(k); },
+      keys: function () { return Array.from(map.keys()); },
+    };
+  })();
+
+  let backend = null;
+
+  function probeStorage() {
+    // Secure context is required for WebCrypto; check it first
+    if (!(window.crypto && window.crypto.subtle)) {
+      storageKind = 'no-crypto';
+      backend = memoryBackend;
+      return false;
+    }
+
+    try {
+      const t = '__keyring_probe__';
+      localStorage.setItem(t, '1');
+      localStorage.removeItem(t);
+      backend = localStorage;
+      storageKind = 'local';
+      return true;
+    } catch (err) {
+      backend = memoryBackend;
+      storageKind = 'memory';
+      return false;
+    }
+  }
+
+  function storageAvailable() {
+    if (storageKind === 'checking') probeStorage();
+    return storageKind === 'local' || storageKind === 'memory';
+  }
+
+  function getStorageKind() {
+    if (storageKind === 'checking') probeStorage();
+    return storageKind;
+  }
+
+  function isPersistent() {
+    return getStorageKind() === 'local';
+  }
+
+  /* -------------------- envelope io -------------------- */
+  function readEnvelope() {
+    try {
+      ensureBackend();
+      const raw = backend.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== 'object' || !obj.data || !obj.salt || !obj.iv) return null;
+      return obj;
+    } catch (err) {
+      console.error('[keyring] failed to read envelope', err);
+      return null;
+    }
+  }
+
+  function writeEnvelope(obj) {
+    ensureBackend();
+    backend.setItem(STORAGE_KEY, JSON.stringify(obj));
+    envelope = obj;
+  }
+
+  function ensureBackend() {
+    if (!backend) probeStorage();
+  }
+
+  function hasVault() {
+    if (!storageAvailable()) return false;
+    return readEnvelope() !== null;
+  }
+
+  function isUnlocked() {
+    return key !== null && vault !== null;
+  }
+
+  function peekInfo() {
+    const env = envelope || readEnvelope();
+    if (!env) return null;
+    return {
+      version: env.v || 1,
+      createdAt: env.createdAt || null,
+      iterations: env.kdf ? env.kdf.iterations : C.KDF_ITERATIONS,
+    };
+  }
+
+  /* -------------------- normalization -------------------- */
+  function str(v) {
+    if (v === null || v === undefined) return '';
+    return String(v);
+  }
+
+  function normalizeTags(input) {
+    if (Array.isArray(input)) {
+      return [...new Set(input.map((t) => str(t).trim().toLowerCase()).filter(Boolean))].slice(0, 12);
+    }
+    return [...new Set(str(input).split(',').map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 12);
+  }
+
+  function normalizeEntry(e) {
+    const now = Date.now();
+    return {
+      id: str(e.id) || C.uid(),
+      title: str(e.title).trim() || 'Untitled',
+      username: str(e.username),
+      password: str(e.password),
+      url: str(e.url).trim(),
+      notes: str(e.notes),
+      category: CATEGORIES.includes(e.category) ? e.category : 'Other',
+      tags: normalizeTags(e.tags),
+      favorite: !!e.favorite,
+      totp: str(e.totp).trim(),
+      history: Array.isArray(e.history) ? e.history.slice(0, 5) : [],
+      deletedAt: e.deletedAt ? Number(e.deletedAt) : null,
+      createdAt: Number(e.createdAt) || now,
+      updatedAt: Number(e.updatedAt) || now,
+    };
+  }
+
+  function emptyVault() {
+    return {
+      entries: [],
+      trash: [],
+      settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+      createdAt: Date.now(),
+      vaultId: C.uid(),
+    };
+  }
+
+  /* -------------------- persistence -------------------- */
+  async function persist() {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    const { iv, data } = await C.encryptJSON(key, vault);
+    writeEnvelope({
+      v: 1,
+      app: APP_ID,
+      kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: C.KDF_ITERATIONS },
+      salt: envelope.salt,
+      iv,
+      data,
+      updatedAt: Date.now(),
+    });
+  }
+
+  /* -------------------- lifecycle -------------------- */
+  async function createVault(masterPassword) {
+    ensureBackend();
+    if (storageKind === 'no-crypto') {
+      throw new Error('This page is not a secure context, so encryption is unavailable. Open it over https (or the installed app).');
+    }
+    if (!storageAvailable()) throw new Error('This browser is blocking local storage.');
+    if (hasVault()) throw new Error('A vault already exists on this device.');
+    if (!masterPassword || masterPassword.length < 8) {
+      throw new Error('Master password must be at least 8 characters.');
+    }
+
+    const saltBytes = C.randomBytes(C.SALT_BYTES);
+    key = await C.deriveKey(masterPassword, saltBytes);
+    vault = emptyVault();
+
+    const { iv, data } = await C.encryptJSON(key, vault);
+    writeEnvelope({
+      v: 1,
+      app: APP_ID,
+      kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: C.KDF_ITERATIONS },
+      salt: C.bufToB64(saltBytes),
+      iv,
+      data,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return true;
+  }
+
+  async function unlock(masterPassword) {
+    if (!storageAvailable()) return { ok: false, reason: 'storage' };
+    const env = readEnvelope();
+    if (!env) return { ok: false, reason: 'no-vault' };
+
+    const seq = ++unlockSeq;
+
+    try {
+      const saltBytes = C.b64ToBuf(env.salt);
+      const iterations = (env.kdf && env.kdf.iterations) || C.KDF_ITERATIONS;
+      const derived = await C.deriveKey(masterPassword, saltBytes, iterations);
+      const payload = await C.decryptJSON(derived, env.iv, env.data);
+
+      if (!payload || !Array.isArray(payload.entries)) {
+        return { ok: false, reason: 'corrupt' };
+      }
+
+      // A newer attempt started while we were deriving — let that one win
+      if (seq !== unlockSeq) return { ok: false, reason: 'superseded' };
+
+      key = derived;
+      envelope = env;
+      vault = {
+        entries: payload.entries.map(normalizeEntry),
+        trash: Array.isArray(payload.trash) ? payload.trash.map(normalizeEntry) : [],
+        settings: Object.assign({}, DEFAULT_SETTINGS, payload.settings || {}, {
+          generator: Object.assign({}, DEFAULT_SETTINGS.generator, (payload.settings || {}).generator || {}),
+        }),
+        createdAt: payload.createdAt || env.createdAt || Date.now(),
+        vaultId: payload.vaultId || C.uid(),
+      };
+
+      return { ok: true, entries: vault.entries.length };
+    } catch (err) {
+      // GCM auth failure means wrong password (or tampering / corruption).
+      // Do not clobber a vault that a newer attempt successfully opened.
+      if (window.KeyringDebug) console.warn('[keyring] unlock failed:', err && err.name, err && err.message);
+      if (seq === unlockSeq) {
+        key = null;
+        vault = null;
+      }
+      return { ok: false, reason: 'bad-password' };
+    }
+  }
+
+  function lock() {
+    key = null;
+    vault = null;
+  }
+
+  /* -------------------- entries -------------------- */
+  function getEntries() {
+    return isUnlocked() ? vault.entries.slice() : [];
+  }
+
+  function getEntry(id) {
+    if (!isUnlocked()) return null;
+    const found = vault.entries.find((e) => e.id === id);
+    return found ? Object.assign({}, found) : null;
+  }
+
+  async function addEntry(data) {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    const entry = normalizeEntry(Object.assign({}, data, {
+      id: C.uid(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }));
+    vault.entries.unshift(entry);
+    await persist();
+    return Object.assign({}, entry);
+  }
+
+  async function updateEntry(id, patch) {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    const idx = vault.entries.findIndex((e) => e.id === id);
+    if (idx === -1) throw new Error('Entry not found');
+    const existing = vault.entries[idx];
+    const history = Array.isArray(existing.history) ? existing.history.slice() : [];
+    if (patch.password !== undefined && patch.password !== existing.password && existing.password) {
+      history.unshift({
+        password: existing.password,
+        changedAt: Date.now(),
+      });
+    }
+    const merged = normalizeEntry(Object.assign({}, existing, patch, {
+      id: existing.id,
+      history: history.slice(0, 5),
+      createdAt: existing.createdAt,
+      updatedAt: Date.now(),
+    }));
+    vault.entries[idx] = merged;
+    await persist();
+    return Object.assign({}, merged);
+  }
+
+  async function deleteEntry(id, permanent = false) {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    const idx = vault.entries.findIndex((e) => e.id === id);
+    if (idx === -1) {
+      if (permanent && Array.isArray(vault.trash)) {
+        const tIdx = vault.trash.findIndex((e) => e.id === id);
+        if (tIdx !== -1) {
+          vault.trash.splice(tIdx, 1);
+          await persist();
+          return true;
+        }
+      }
+      return false;
+    }
+    const [removed] = vault.entries.splice(idx, 1);
+    if (!permanent) {
+      if (!Array.isArray(vault.trash)) vault.trash = [];
+      vault.trash.unshift(Object.assign({}, removed, { deletedAt: Date.now() }));
+    }
+    await persist();
+    return true;
+  }
+
+  function getTrash() {
+    if (!isUnlocked()) return [];
+    return Array.isArray(vault.trash) ? vault.trash.slice() : [];
+  }
+
+  async function restoreFromTrash(id) {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    if (!Array.isArray(vault.trash)) return false;
+    const idx = vault.trash.findIndex((e) => e.id === id);
+    if (idx === -1) return false;
+    const [entry] = vault.trash.splice(idx, 1);
+    delete entry.deletedAt;
+    vault.entries.unshift(normalizeEntry(entry));
+    await persist();
+    return true;
+  }
+
+  async function emptyTrash() {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    vault.trash = [];
+    await persist();
+    return true;
+  }
+
+  async function toggleFavorite(id) {
+    const entry = getEntry(id);
+    if (!entry) return null;
+    return updateEntry(id, { favorite: !entry.favorite });
+  }
+
+  /* -------------------- settings -------------------- */
+  function getSettings() {
+    if (!isUnlocked()) return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    return JSON.parse(JSON.stringify(vault.settings));
+  }
+
+  async function updateSettings(patch) {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    vault.settings = Object.assign({}, vault.settings, patch, {
+      generator: Object.assign({}, vault.settings.generator, patch.generator || {}),
+    });
+    await persist();
+    return getSettings();
+  }
+
+  /* -------------------- master password change -------------------- */
+  async function changeMasterPassword(currentPassword, newPassword) {
+    if (!isUnlocked()) return { ok: false, reason: 'locked' };
+    if (!newPassword || newPassword.length < 8) {
+      return { ok: false, reason: 'weak' };
+    }
+
+    // Verify the current password against the stored envelope first
+    const env = readEnvelope();
+    if (!env) return { ok: false, reason: 'no-vault' };
+    try {
+      const oldKey = await C.deriveKey(currentPassword, C.b64ToBuf(env.salt), (env.kdf && env.kdf.iterations) || C.KDF_ITERATIONS);
+      await C.decryptJSON(oldKey, env.iv, env.data);
+    } catch (err) {
+      return { ok: false, reason: 'bad-password' };
+    }
+
+    const saltBytes = C.randomBytes(C.SALT_BYTES);
+    const newKey = await C.deriveKey(newPassword, saltBytes);
+    key = newKey;
+    envelope = { salt: C.bufToB64(saltBytes) };
+    const { iv, data } = await C.encryptJSON(key, vault);
+    writeEnvelope({
+      v: 1,
+      app: APP_ID,
+      kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: C.KDF_ITERATIONS },
+      salt: envelope.salt,
+      iv,
+      data,
+      createdAt: vault.createdAt,
+      updatedAt: Date.now(),
+    });
+    return { ok: true };
+  }
+
+  /* -------------------- backup: export -------------------- */
+  function exportBackup() {
+    if (!isUnlocked()) throw new Error('Vault is locked');
+    const env = readEnvelope();
+    const backup = {
+      format: 'keyring-backup',
+      formatVersion: 1,
+      app: 'Keyring Password Vault',
+      exportedAt: new Date().toISOString(),
+      entries: vault.entries.length,
+      envelope: {
+        v: env.v,
+        kdf: env.kdf,
+        salt: env.salt,
+        iv: env.iv,
+        data: env.data,
+      },
+    };
+    const d = new Date();
+    const stamp = [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, '0'),
+      String(d.getDate()).padStart(2, '0'),
+    ].join('-') + '-' + [
+      String(d.getHours()).padStart(2, '0'),
+      String(d.getMinutes()).padStart(2, '0'),
+    ].join('');
+
+    return {
+      filename: `keyring-backup-${stamp}.json`,
+      json: JSON.stringify(backup, null, 2),
+      entryCount: vault.entries.length,
+    };
+  }
+
+  /* -------------------- backup: import -------------------- */
+  function parseBackup(jsonText) {
+    let obj;
+    try {
+      obj = JSON.parse(jsonText);
+    } catch (err) {
+      return { ok: false, reason: 'not-json' };
+    }
+
+    // Accept either a full backup wrapper or a bare envelope
+    let env = null;
+    if (obj && obj.format === 'keyring-backup' && obj.envelope) env = obj.envelope;
+    else if (obj && obj.data && obj.salt && obj.iv) env = obj;
+
+    if (!env || !env.data || !env.salt || !env.iv) {
+      return { ok: false, reason: 'not-backup' };
+    }
+    if (env.v && env.v > 1) {
+      return { ok: false, reason: 'version' };
+    }
+    return { ok: true, envelope: env, exportedAt: obj.exportedAt || null };
+  }
+
+  async function decryptBackupEnvelope(env, password) {
+    const saltBytes = C.b64ToBuf(env.salt);
+    const iterations = (env.kdf && env.kdf.iterations) || C.KDF_ITERATIONS;
+    const derived = await C.deriveKey(password, saltBytes, iterations);
+    const payload = await C.decryptJSON(derived, env.iv, env.data);
+    if (!payload || !Array.isArray(payload.entries)) throw new Error('Malformed backup payload');
+    return payload;
+  }
+
+  /**
+   * Import entries from a backup.
+   * mode: 'merge' keeps existing entries and adds new ones,
+   *       'replace' overwrites the current vault entirely.
+   */
+  async function importBackup(jsonText, password, mode = 'merge') {
+    if (!isUnlocked()) return { ok: false, reason: 'locked' };
+
+    const parsed = parseBackup(jsonText);
+    if (!parsed.ok) return parsed;
+
+    let payload;
+    try {
+      payload = await decryptBackupEnvelope(parsed.envelope, password);
+    } catch (err) {
+      return { ok: false, reason: 'bad-password' };
+    }
+
+    const incoming = payload.entries.map(normalizeEntry);
+    let imported = 0;
+    let skipped = 0;
+
+    if (mode === 'replace') {
+      vault.entries = incoming;
+      imported = incoming.length;
+      if (payload.settings) {
+        vault.settings = Object.assign({}, DEFAULT_SETTINGS, payload.settings, {
+          generator: Object.assign({}, DEFAULT_SETTINGS.generator, (payload.settings || {}).generator || {}),
+        });
+      }
+    } else {
+      const existingIds = new Set(vault.entries.map((e) => e.id));
+      const existingSigs = new Set(
+        vault.entries.map((e) => `${e.title}\u0000${e.username}\u0000${e.password}`)
+      );
+      const toAdd = [];
+      for (const e of incoming) {
+        const sig = `${e.title}\u0000${e.username}\u0000${e.password}`;
+        if (existingIds.has(e.id) || existingSigs.has(sig)) {
+          skipped++;
+          continue;
+        }
+        // Fresh id so the same backup can be imported twice without clashing
+        toAdd.push(Object.assign({}, e, { id: C.uid() }));
+        existingSigs.add(sig);
+      }
+      vault.entries = toAdd.concat(vault.entries);
+      imported = toAdd.length;
+    }
+
+    await persist();
+    return { ok: true, imported, skipped, total: vault.entries.length, mode };
+  }
+
+  /* -------------------- CSV import -------------------- */
+  function parseCSV(text) {
+    const rows = [];
+    let currentRow = [];
+    let currentCell = '';
+    let insideQuotes = false;
+    const str = String(text || '');
+
+    for (let i = 0; i < str.length; i++) {
+      const char = str[i];
+      const nextChar = str[i + 1];
+
+      if (insideQuotes) {
+        if (char === '"') {
+          if (nextChar === '"') {
+            currentCell += '"';
+            i++;
+          } else {
+            insideQuotes = false;
+          }
+        } else {
+          currentCell += char;
+        }
+      } else {
+        if (char === '"') {
+          insideQuotes = true;
+        } else if (char === ',') {
+          currentRow.push(currentCell.trim());
+          currentCell = '';
+        } else if (char === '\r') {
+          // ignore CR
+        } else if (char === '\n') {
+          currentRow.push(currentCell.trim());
+          if (currentRow.length > 0 && currentRow.some((c) => c !== '')) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          currentCell = '';
+        } else {
+          currentCell += char;
+        }
+      }
+    }
+
+    if (currentCell.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentCell.trim());
+      if (currentRow.some((c) => c !== '')) {
+        rows.push(currentRow);
+      }
+    }
+
+    if (rows.length < 2) return [];
+
+    const headers = rows[0].map((h) => h.toLowerCase().replace(/[\s_-]+/g, ''));
+    const getIdx = (candidates) => headers.findIndex((h) => candidates.includes(h));
+    const titleIdx = getIdx(['title', 'name', 'account', 'loginname']);
+    const userIdx = getIdx(['username', 'loginusername', 'user', 'email', 'login']);
+    const passIdx = getIdx(['password', 'loginpassword', 'pass']);
+    const urlIdx = getIdx(['url', 'loginuri', 'uri', 'website', 'web', 'link']);
+    const notesIdx = getIdx(['notes', 'note', 'comments', 'comment', 'extra']);
+    const catIdx = getIdx(['category', 'folder']);
+    const totpIdx = getIdx(['totp', 'logintotp']);
+    const favIdx = getIdx(['favorite', 'fav']);
+
+    const entries = [];
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const title = titleIdx !== -1 ? row[titleIdx] : '';
+      const user = userIdx !== -1 ? row[userIdx] : '';
+      const pass = passIdx !== -1 ? row[passIdx] : '';
+      const url = urlIdx !== -1 ? row[urlIdx] : '';
+      const notes = notesIdx !== -1 ? row[notesIdx] : '';
+      const cat = catIdx !== -1 ? row[catIdx] : '';
+      const totp = totpIdx !== -1 ? row[totpIdx] : '';
+      const fav = favIdx !== -1 ? ['true', '1', 'yes'].includes((row[favIdx] || '').toLowerCase()) : false;
+
+      if (!title && !user && !pass) continue;
+
+      entries.push({
+        title: title || 'Imported Entry',
+        username: user || '',
+        password: pass || '',
+        url: url || '',
+        notes: notes || '',
+        category: CATEGORIES.includes(cat) ? cat : 'General',
+        totp: totp || '',
+        favorite: fav,
+      });
+    }
+
+    return entries;
+  }
+
+  async function importCSV(csvText, mode = 'merge') {
+    if (!isUnlocked()) return { ok: false, reason: 'locked' };
+    const incoming = parseCSV(csvText);
+    if (!incoming || incoming.length === 0) {
+      return { ok: false, reason: 'empty-or-invalid' };
+    }
+
+    const normalized = incoming.map(normalizeEntry);
+    let imported = 0;
+    let skipped = 0;
+
+    if (mode === 'replace') {
+      vault.entries = normalized;
+      imported = normalized.length;
+    } else {
+      const existingSigs = new Set(
+        vault.entries.map((e) => `${e.title}\u0000${e.username}\u0000${e.password}`)
+      );
+      const toAdd = [];
+      for (const e of normalized) {
+        const sig = `${e.title}\u0000${e.username}\u0000${e.password}`;
+        if (existingSigs.has(sig)) {
+          skipped++;
+          continue;
+        }
+        toAdd.push(Object.assign({}, e, { id: C.uid() }));
+        existingSigs.add(sig);
+      }
+      vault.entries = toAdd.concat(vault.entries);
+      imported = toAdd.length;
+    }
+
+    await persist();
+    return { ok: true, imported, skipped, total: vault.entries.length, mode };
+  }
+
+  /* -------------------- danger zone -------------------- */
+  async function wipeAll() {
+    key = null;
+    vault = null;
+    envelope = null;
+    ensureBackend();
+    try { backend.removeItem(STORAGE_KEY); } catch (err) { /* ignore */ }
+    // Best-effort cleanup of any stale keys from older builds
+    try {
+      backend.keys()
+        .filter((k) => k.startsWith('keyring.') && k !== STORAGE_KEY)
+        .forEach((k) => backend.removeItem(k));
+    } catch (err) { /* ignore */ }
+  }
+
+  /* -------------------- diagnostics -------------------- */
+  function byteSize() {
+    try {
+      ensureBackend();
+      const raw = backend.getItem(STORAGE_KEY);
+      return raw ? new Blob([raw]).size : 0;
+    } catch (err) {
+      return 0;
+    }
+  }
+
+  function entryStats() {
+    if (!isUnlocked()) return { total: 0, weak: 0, reused: 0, favorites: 0 };
+    const entries = vault.entries;
+    const counts = new Map();
+    for (const e of entries) {
+      if (!e.password) continue;
+      counts.set(e.password, (counts.get(e.password) || 0) + 1);
+    }
+    let weak = 0;
+    let reused = 0;
+    for (const e of entries) {
+      if (e.password && C.estimateEntropyBits(e.password) < 45) weak++;
+      if (e.password && (counts.get(e.password) || 0) > 1) reused++;
+    }
+    return {
+      total: entries.length,
+      weak,
+      reused,
+      favorites: entries.filter((e) => e.favorite).length,
+    };
+  }
+
+  return {
+    STORAGE_KEY,
+    CATEGORIES,
+    DEFAULT_SETTINGS,
+    storageAvailable,
+    getStorageKind,
+    isPersistent,
+    hasVault,
+    isUnlocked,
+    peekInfo,
+    createVault,
+    unlock,
+    lock,
+    getEntries,
+    getEntry,
+    addEntry,
+    updateEntry,
+    deleteEntry,
+    getTrash,
+    restoreFromTrash,
+    emptyTrash,
+    toggleFavorite,
+    getSettings,
+    updateSettings,
+    changeMasterPassword,
+    exportBackup,
+    parseBackup,
+    importBackup,
+    parseCSV,
+    importCSV,
+    wipeAll,
+    byteSize,
+    entryStats,
+  };
+})();
+
+window.KeyringStore = KeyringStore;
+
+</script>
+<script>
+/* ==== assets/js/pwa.js ==== */
+/* ============================================================
+   Keyring — PWA glue
+   Captures the install prompt, registers the service worker,
+   and exposes a tiny API the app layer can use.
+   ============================================================ */
+
+window.KeyringPWA = (function () {
+  'use strict';
+
+  let installEvent = null;
+
+  function isStandalone() {
+    const mm = window.matchMedia ? window.matchMedia('(display-mode: standalone)').matches : false;
+    return mm || window.navigator.standalone === true;
+  }
+
+  window.addEventListener('beforeinstallprompt', function (event) {
+    event.preventDefault();
+    installEvent = event;
+    if (window.KeyringApp && window.KeyringApp.onInstallAvailable) {
+      window.KeyringApp.onInstallAvailable();
+    }
+  });
+
+  window.addEventListener('appinstalled', function () {
+    installEvent = null;
+    if (window.KeyringApp) {
+      if (window.KeyringApp.toast) window.KeyringApp.toast('Keyring installed on this device');
+      if (window.KeyringApp.onInstallAvailable) window.KeyringApp.onInstallAvailable();
+    }
+  });
+
+  function register() {
+    // The standalone single-file build has no sw.js next to it
+    if (window.KEYRING_STANDALONE) return;
+    if (!('serviceWorker' in navigator)) return;
+    if (!/^https?:$/.test(location.protocol)) return;
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('[keyring] service worker registration failed', err);
+      });
+    });
+  }
+
+  return {
+    getInstallEvent: function () { return installEvent; },
+    clearInstallEvent: function () { installEvent = null; },
+    isStandalone: isStandalone,
+    register: register,
+  };
+})();
+
+</script>
+<script>
+/* ==== assets/js/app.js ==== */
+/* ============================================================
+   Keyring — app logic
+   Plain DOM, no framework. Sections:
+     1. helpers
+     2. state
+     3. gate (setup / unlock)
+     4. shell + rendering
+     5. entry form / detail / delete
+     6. generator
+     7. settings / backup
+     8. lock + auto-lock
+     9. boot
+   ============================================================ */
+
+(function () {
+  'use strict';
+
+  const C = window.KeyringCrypto;
+  const S = window.KeyringStore;
+
+  /* ==========================================================
+     1. helpers
+     ========================================================== */
+
+  const $ = function (sel, root) { return (root || document).querySelector(sel); };
+  const $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  function esc(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function icon(name, cls) {
+    return '<svg class="icon ' + (cls || '') + '" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
+  }
+
+  function initials(title) {
+    const t = String(title || '').trim();
+    if (!t) return '?';
+    const parts = t.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return t.slice(0, 2).toUpperCase();
+  }
+
+  function hueFor(text) {
+    let h = 0;
+    const s = String(text || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return h;
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return '—';
+    const diff = Date.now() - Number(ts);
+    const s = Math.round(diff / 1000);
+    if (s < 45) return 'just now';
+    const m = Math.round(s / 60);
+    if (m < 60) return m + 'm ago';
+    const h = Math.round(m / 60);
+    if (h < 24) return h + 'h ago';
+    const d = Math.round(h / 24);
+    if (d < 30) return d + 'd ago';
+    const mo = Math.round(d / 30);
+    if (mo < 12) return mo + 'mo ago';
+    return Math.round(mo / 12) + 'y ago';
+  }
+
+  function fullDate(ts) {
+    if (!ts) return '—';
+    try {
+      return new Date(Number(ts)).toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    } catch (err) {
+      return new Date(Number(ts)).toISOString();
+    }
+  }
+
+  function normalizeUrl(u) {
+    const raw = String(u || '').trim();
+    if (!raw) return '';
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) return raw;
+    return 'https://' + raw;
+  }
+
+  function isProbablyUrl(u) {
+    const raw = String(u || '').trim();
+    return raw.length > 0 && !/\s/.test(raw);
+  }
+
+  let toastSeq = 0;
+  function toast(message, kind) {
+    const wrap = $('#toast-wrap');
+    if (!wrap) return;
+    const id = ++toastSeq;
+    const el = document.createElement('div');
+    el.className = 'toast' + (kind === 'err' ? ' err' : '');
+    el.dataset.id = String(id);
+    el.innerHTML = icon(kind === 'err' ? 'alert' : 'check') + '<span>' + esc(message) + '</span>';
+    wrap.appendChild(el);
+    setTimeout(function () {
+      el.classList.add('out');
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 220);
+    }, kind === 'err' ? 3400 : 2100);
+  }
+
+  /* ---------- clipboard ---------- */
+  let clipboardTimer = null;
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  async function copyText(text, label, opts) {
+    const options = opts || {};
+    let ok = true;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        ok = fallbackCopy(text);
+      }
+    } catch (err) {
+      ok = fallbackCopy(text);
+    }
+
+    if (!ok) {
+      toast('Could not access the clipboard — select and copy manually', 'err');
+      return false;
+    }
+
+    const seconds = currentSettings().clipboardClearSeconds;
+    if (options.secret && seconds > 0) {
+      const mins = seconds >= 60 ? Math.round(seconds / 60) + ' min' : seconds + 's';
+      toast(label + ' copied · clears in ' + mins);
+      scheduleClipboardClear(seconds);
+    } else {
+      toast(label + ' copied');
+    }
+    return true;
+  }
+
+  function scheduleClipboardClear(seconds) {
+    if (clipboardTimer) clearTimeout(clipboardTimer);
+    clipboardTimer = setTimeout(function () {
+      clipboardTimer = null;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText('').catch(function () { /* ignore */ });
+        } else {
+          fallbackCopy(' ');
+        }
+      } catch (err) { /* ignore */ }
+    }, Math.max(5, seconds) * 1000);
+  }
+
+  /* ==========================================================
+     2. state
+     ========================================================== */
+
+  const state = {
+    filter: 'all',
+    search: '',
+    sort: 'recent',
+    activeSheet: null,
+    lastActivity: Date.now(),
+    hiddenAt: null,
+    revealTimer: null,
+    installPrompt: null,
+    importedDraft: null,
+  };
+
+  function currentSettings() {
+    if (!S.isUnlocked()) {
+      return JSON.parse(JSON.stringify(S.DEFAULT_SETTINGS));
+    }
+    return S.getSettings();
+  }
+
+  /* ==========================================================
+     3. gate
+     ========================================================== */
+
+  function showSetup() {
+    $('#gate').classList.remove('hidden');
+    $('#app').classList.add('hidden');
+    $('#setup-form').classList.remove('hidden');
+    $('#unlock-form').classList.add('hidden');
+    setTimeout(function () {
+      const el = $('#setup-password');
+      if (el) el.focus();
+    }, 120);
+  }
+
+  function showUnlock(message) {
+    $('#gate').classList.remove('hidden');
+    $('#app').classList.add('hidden');
+    $('#setup-form').classList.add('hidden');
+    $('#unlock-form').classList.remove('hidden');
+    const err = $('#unlock-error');
+    if (Date.now() < unlockCooldownUntil) {
+      setUnlockCooldownUI();
+    } else if (message) {
+      err.textContent = message;
+      err.classList.remove('hidden');
+    } else {
+      err.classList.add('hidden');
+    }
+    setTimeout(function () {
+      const el = $('#unlock-password');
+      if (el) el.focus();
+    }, 120);
+  }
+
+  function renderStrength(inputEl, meterEl) {
+    const value = inputEl.value || '';
+    const bits = C.estimateEntropyBits(value);
+    const info = C.strengthLabel(bits);
+    const fill = meterEl.querySelector('i');
+    const label = meterEl.querySelector('.strength-label');
+    const pct = [8, 25, 46, 69, 92][info.level];
+    fill.style.width = value ? pct + '%' : '0%';
+    const colors = ['#ff6b81', '#ff8a5c', '#f5b759', '#3ddc97', '#22d3ee'];
+    fill.style.background = colors[info.level];
+    label.textContent = value ? info.label : '—';
+    label.style.color = value ? colors[info.level] : '';
+  }
+
+  async function handleSetup(event) {
+    event.preventDefault();
+    const passEl = $('#setup-password');
+    const confirmEl = $('#setup-confirm');
+    const errEl = $('#setup-error');
+    const btn = $('#setup-submit');
+
+    const password = passEl.value;
+    const confirm = confirmEl.value;
+
+    function fail(msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    }
+
+    errEl.classList.add('hidden');
+
+    if (password.length < 8) return fail('Use at least 8 characters.');
+    if (password !== confirm) return fail('The two passwords do not match.');
+    if (C.estimateEntropyBits(password) < 45) {
+      return fail('That password is easy to guess. Mix in numbers, symbols and length.');
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sealing vault…';
+    try {
+      await S.createVault(password);
+      passEl.value = '';
+      confirmEl.value = '';
+      unlockUI();
+    } catch (err) {
+      fail(err && err.message ? err.message : 'Could not create the vault.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Create vault';
+    }
+  }
+
+  let unlockBusy = false;
+  let failedUnlockAttempts = 0;
+  let unlockCooldownUntil = 0;
+  let unlockCooldownTimer = null;
+
+  function setUnlockCooldownUI() {
+    const btn = $('#unlock-submit');
+    const errEl = $('#unlock-error');
+    if (!btn || !errEl) return;
+    const remaining = Math.max(0, Math.ceil((unlockCooldownUntil - Date.now()) / 1000));
+    if (remaining > 0) {
+      btn.disabled = true;
+      btn.textContent = 'Wait ' + remaining + 's';
+      errEl.textContent = 'Wrong password. Cooldown active (' + remaining + 's remaining).';
+      errEl.classList.remove('hidden');
+    } else {
+      clearInterval(unlockCooldownTimer);
+      unlockCooldownTimer = null;
+      btn.disabled = false;
+      btn.textContent = 'Unlock';
+      errEl.textContent = 'Wrong master password. Try again.';
+    }
+  }
+
+  async function handleUnlock(event) {
+    event.preventDefault();
+    if (unlockBusy) return;
+    const passEl = $('#unlock-password');
+    const errEl = $('#unlock-error');
+    const btn = $('#unlock-submit');
+
+    const now = Date.now();
+    if (now < unlockCooldownUntil) {
+      setUnlockCooldownUI();
+      return;
+    }
+
+    const password = passEl.value;
+
+    if (!password) {
+      errEl.textContent = 'Enter your master password.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    errEl.classList.add('hidden');
+    unlockBusy = true;
+    btn.disabled = true;
+    btn.textContent = 'Unlocking…';
+
+    let result;
+    try {
+      result = await S.unlock(password);
+    } catch (err) {
+      result = { ok: false, reason: 'error' };
+    } finally {
+      unlockBusy = false;
+      if (Date.now() >= unlockCooldownUntil) {
+        btn.disabled = false;
+        btn.textContent = 'Unlock';
+      }
+    }
+
+    if (result.ok) {
+      failedUnlockAttempts = 0;
+      unlockCooldownUntil = 0;
+      if (unlockCooldownTimer) {
+        clearInterval(unlockCooldownTimer);
+        unlockCooldownTimer = null;
+      }
+      passEl.value = '';
+      unlockUI();
+      if (result.entries === 0) {
+        setTimeout(function () { toast('Vault unlocked — add your first password'); }, 250);
+      }
+      return;
+    }
+
+    if (result.reason === 'superseded') {
+      // A newer attempt is already running; it will report the outcome.
+      return;
+    }
+
+    if (result.reason === 'bad-password') {
+      failedUnlockAttempts++;
+      if (failedUnlockAttempts >= 3) {
+        const cooldownSec = Math.min(30, 3 * Math.pow(2, failedUnlockAttempts - 3));
+        unlockCooldownUntil = Date.now() + (cooldownSec * 1000);
+        setUnlockCooldownUI();
+        clearInterval(unlockCooldownTimer);
+        unlockCooldownTimer = setInterval(setUnlockCooldownUI, 1000);
+      } else {
+        errEl.textContent = 'Wrong master password. Try again.';
+        errEl.classList.remove('hidden');
+      }
+      passEl.select();
+      const card = $('.gate-card');
+      if (card && card.animate) {
+        card.animate(
+          [{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)' },
+           { transform: 'translateX(6px)' }, { transform: 'translateX(-4px)' },
+           { transform: 'translateX(0)' }],
+          { duration: 320, easing: 'ease-in-out' }
+        );
+      }
+    } else if (result.reason === 'storage') {
+      errEl.textContent = 'This browser is blocking local storage, so the vault cannot be opened. Disable private browsing and reload.';
+      errEl.classList.remove('hidden');
+    } else {
+      errEl.textContent = 'The stored vault could not be read.';
+      errEl.classList.remove('hidden');
+    }
+  }
+
+  /* ==========================================================
+     4. shell + rendering
+     ========================================================== */
+
+  function unlockUI() {
+    $('#gate').classList.add('hidden');
+    $('#app').classList.remove('hidden');
+    const settings = S.getSettings();
+    state.sort = settings.sortMode || 'recent';
+    state.filter = 'all';
+    state.search = '';
+    $('#search').value = '';
+    $('#search-clear').classList.add('hidden');
+    state.lastActivity = Date.now();
+    renderChips();
+    renderList();
+    maybeShowInstallBanner();
+    startIdleWatch();
+    refreshInstallButton();
+    maybeShowInstallBanner();
+    applyStorageNotice();
+    handleLaunchShortcut();
+  }
+
+  function handleLaunchShortcut() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.get('action') === 'new') {
+        setTimeout(function () { openEntryForm(null); }, 320);
+        try { history.replaceState(null, '', location.pathname); } catch (err) { /* ignore */ }
+      }
+    } catch (err) { /* ignore */ }
+  }
+
+  function lockVault(showMessage) {
+    stopIdleWatch();
+    state.revealTimer && clearTimeout(state.revealTimer);
+    state.revealTimer = null;
+    closeSheet(true);
+    S.lock();
+    $('#app').classList.add('hidden');
+    showUnlock(showMessage ? 'Vault locked. Enter your master password to continue.' : null);
+    const banner = $('#banner');
+    banner.classList.add('hidden');
+  }
+
+  function getVisibleEntries() {
+    const all = S.getEntries();
+    const term = state.search.trim().toLowerCase();
+    const filtered = all.filter(function (e) {
+      if (state.filter === 'fav' && !e.favorite) return false;
+      if (state.filter !== 'all' && state.filter !== 'fav' && e.category !== state.filter) return false;
+      if (!term) return true;
+      const hay = [e.title, e.username, e.url, e.notes, e.category]
+        .concat(e.tags || [])
+        .join(' \u0000 ')
+        .toLowerCase();
+      return hay.indexOf(term) !== -1;
+    });
+
+    const sortMode = state.sort;
+    filtered.sort(function (a, b) {
+      if (sortMode === 'az') return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+      if (sortMode === 'category') {
+        const c = a.category.localeCompare(b.category);
+        return c !== 0 ? c : a.title.localeCompare(b.title);
+      }
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+    return filtered;
+  }
+
+  function renderChips() {
+    const entries = S.getEntries();
+    const present = {};
+    entries.forEach(function (e) { present[e.category] = (present[e.category] || 0) + 1; });
+    const favCount = entries.filter(function (e) { return e.favorite; }).length;
+
+    const chips = [];
+    chips.push(
+      '<button class="chip' + (state.filter === 'all' ? ' active' : '') + '" data-filter="all" role="tab">All <span>' + entries.length + '</span></button>'
+    );
+    if (favCount > 0 || state.filter === 'fav') {
+      chips.push(
+        '<button class="chip' + (state.filter === 'fav' ? ' active' : '') + '" data-filter="fav" role="tab">' +
+        icon('star') + 'Favorites <span>' + favCount + '</span></button>'
+      );
+    }
+    S.CATEGORIES.forEach(function (cat) {
+      const count = present[cat] || 0;
+      if (!count && state.filter !== cat) return;
+      chips.push(
+        '<button class="chip' + (state.filter === cat ? ' active' : '') + '" data-filter="' + esc(cat) + '" role="tab">' +
+        esc(cat) + ' <span>' + count + '</span></button>'
+      );
+    });
+
+    const wrap = $('#chips');
+    wrap.innerHTML = chips.join('');
+    $('#sort-btn').textContent = state.sort === 'az' ? 'A–Z' : (state.sort === 'category' ? 'Category' : 'Recent');
+  }
+
+  function cardHTML(entry) {
+    const weak = entry.password && C.estimateEntropyBits(entry.password) < 45;
+    const userLine = entry.username
+      ? '<div class="card-user">' + esc(entry.username) + '</div>'
+      : (entry.url ? '<div class="card-user">' + esc(entry.url) + '</div>' : '<div class="card-user">No username saved</div>');
+
+    return '' +
+      '<article class="card" data-id="' + esc(entry.id) + '">' +
+        '<div class="card-main" data-action="open" role="button" tabindex="0" aria-label="Open ' + esc(entry.title) + '">' +
+          '<div class="avatar" style="--hue:' + hueFor(entry.title) + '">' + esc(initials(entry.title)) + '</div>' +
+          '<div class="card-text">' +
+            '<div class="card-title-row">' +
+              '<span class="card-title">' + esc(entry.title) + '</span>' +
+              (weak ? '<span class="warn-dot" title="Weak password" aria-label="Weak password"></span>' : '') +
+              '<span class="cat-pill">' + esc(entry.category) + '</span>' +
+            '</div>' +
+            userLine +
+            (entry.password ? '<div class="card-pass">••••••••••</div>' : '<div class="card-pass">no password</div>') +
+          '</div>' +
+          '<button class="star-btn' + (entry.favorite ? ' active' : '') + '" data-action="fav" ' +
+            'aria-label="' + (entry.favorite ? 'Remove from favorites' : 'Add to favorites') + '" ' +
+            'aria-pressed="' + (entry.favorite ? 'true' : 'false') + '">' + icon('star') + '</button>' +
+        '</div>' +
+        '<div class="card-actions">' +
+          '<button data-action="copy-user">' + icon('user') + 'User</button>' +
+          '<button data-action="copy-pass">' + icon('key') + 'Password</button>' +
+          '<button data-action="edit">' + icon('edit') + 'Edit</button>' +
+          '<button data-action="delete" class="danger">' + icon('trash') + 'Delete</button>' +
+        '</div>' +
+      '</article>';
+  }
+
+  function renderList() {
+    const entries = getVisibleEntries();
+    const all = S.getEntries();
+    const listEl = $('#list');
+    const emptyEl = $('#empty');
+    const metaEl = $('#meta-row');
+
+    if (!entries.length) {
+      listEl.innerHTML = '';
+      emptyEl.classList.remove('hidden');
+
+      const isFiltered = state.search.trim() || state.filter !== 'all';
+      if (!all.length) {
+        $('#empty-title').textContent = 'Your vault is empty';
+        $('#empty-msg').textContent = 'Add your first login — it is encrypted before it ever touches storage.';
+        $('#empty-cta').classList.remove('hidden');
+        metaEl.innerHTML = '';
+      } else if (isFiltered) {
+        $('#empty-title').textContent = 'Nothing matches';
+        $('#empty-msg').textContent = 'No entry matches this search or filter. Try a different word or category.';
+        $('#empty-cta').classList.add('hidden');
+        metaEl.innerHTML = '<span>0 of ' + all.length + ' entries</span>';
+      } else {
+        $('#empty-title').textContent = 'Your vault is empty';
+        $('#empty-msg').textContent = 'Add your first login.';
+        $('#empty-cta').classList.remove('hidden');
+        metaEl.innerHTML = '';
+      }
+      return;
+    }
+
+    emptyEl.classList.add('hidden');
+    listEl.innerHTML = entries.map(cardHTML).join('');
+
+    const stats = S.entryStats();
+    const bits = [];
+    bits.push('<span>' + (entries.length === all.length
+      ? entries.length + (entries.length === 1 ? ' entry' : ' entries')
+      : entries.length + ' of ' + all.length) + '</span>');
+    if (stats.weak > 0) {
+      bits.push('<span style="color:var(--warn)">' + stats.weak + ' weak</span>');
+    }
+    if (stats.reused > 0) {
+      bits.push('<span style="color:var(--warn)">' + stats.reused + ' reused</span>');
+    }
+    metaEl.innerHTML = bits.join('');
+  }
+
+  function refresh() {
+    renderChips();
+    renderList();
+  }
+
+  /* ==========================================================
+     5. sheets
+     ========================================================== */
+
+  const overlay = function () { return $('#overlay'); };
+
+  function openSheet(name, html, setup) {
+    const ov = overlay();
+
+    // Replace the sheet node with a clean copy so listeners attached by the
+    // previous sheet (delegated change/click handlers) cannot leak into this one.
+    const previous = $('#sheet');
+    const sheet = previous.cloneNode(false);
+    previous.parentNode.replaceChild(sheet, previous);
+
+    sheet.innerHTML = html;
+    state.activeSheet = name;
+    ov.classList.remove('hidden');
+    document.body.classList.add('no-scroll', 'sheet-open');
+    requestAnimationFrame(function () { ov.classList.add('open'); });
+    sheet.scrollTop = 0;
+
+    $$('[data-close]', sheet).forEach(function (el) {
+      el.addEventListener('click', function () { closeSheet(); });
+    });
+
+    if (typeof setup === 'function') setup(sheet);
+
+    setTimeout(function () {
+      const first = sheet.querySelector('input:not([type=hidden]):not([type=checkbox]), textarea, select');
+      if (first && !('ontouchstart' in window)) first.focus();
+    }, 220);
+  }
+
+  function closeSheet(instant) {
+    const ov = overlay();
+    if (ov.classList.contains('hidden')) return;
+    state.activeSheet = null;
+    if (state.revealTimer) { clearTimeout(state.revealTimer); state.revealTimer = null; }
+    ov.classList.remove('open');
+    document.body.classList.remove('no-scroll', 'sheet-open');
+    if (instant) {
+      ov.classList.add('hidden');
+      const sheet = $('#sheet');
+      if (sheet) sheet.innerHTML = '';
+      return;
+    }
+    setTimeout(function () {
+      if (!ov.classList.contains('open')) {
+        ov.classList.add('hidden');
+        const sheet = $('#sheet');
+        if (sheet) sheet.innerHTML = '';
+      }
+    }, 200);
+  }
+
+  function sheetHead(title, iconName, extraHtml) {
+    return '<div class="sheet-head">' +
+      '<h2>' + (iconName ? icon(iconName) : '') + esc(title) + '</h2>' +
+      '<div style="display:flex;gap:4px;align-items:center">' + (extraHtml || '') +
+      '<button type="button" class="icon-btn" data-close aria-label="Close">' + icon('x') + '</button></div>' +
+      '</div>';
+  }
+
+  /* ---------- entry form ---------- */
+
+  function entryFormHTML(data) {
+    const isEdit = !!(data && data.id);
+    const d = data || {};
+    const categories = S.CATEGORIES.map(function (cat) {
+      return '<option value="' + esc(cat) + '"' + ((d.category || 'General') === cat ? ' selected' : '') + '>' + esc(cat) + '</option>';
+    }).join('');
+
+    return '' +
+      '<form class="sheet-form" id="entry-form" autocomplete="off" novalidate>' +
+        sheetHead(isEdit ? 'Edit password' : 'New password', 'key') +
+        '<label class="field">' +
+          '<span class="field-label">Title *</span>' +
+          '<input id="f-title" type="text" required placeholder="e.g. Gmail, HDFC Bank, GitHub" value="' + esc(d.title || '') + '" maxlength="80">' +
+        '</label>' +
+        '<label class="field">' +
+          '<span class="field-label">Username or email</span>' +
+          '<input id="f-username" type="text" inputmode="email" placeholder="you@example.com" value="' + esc(d.username || '') + '" maxlength="160" spellcheck="false">' +
+        '</label>' +
+        '<div class="field">' +
+          '<span class="field-label">Password</span>' +
+          '<div class="input-row">' +
+            '<input id="f-password" type="password" placeholder="Password" value="' + esc(d.password || '') + '" maxlength="512" spellcheck="false">' +
+            '<button type="button" class="icon-btn" data-toggle-pass="f-password" aria-label="Show password">' + icon('eye') + '</button>' +
+            '<button type="button" class="icon-btn" id="f-generate" aria-label="Generate password" title="Generate password">' + icon('dice') + '</button>' +
+          '</div>' +
+          '<div class="strength" id="f-strength"><div class="strength-track"><i></i></div><span class="strength-label">—</span></div>' +
+        '</div>' +
+        '<div class="field-grid">' +
+          '<label class="field">' +
+            '<span class="field-label">Website</span>' +
+            '<input id="f-url" type="text" inputmode="url" placeholder="example.com" value="' + esc(d.url || '') + '" spellcheck="false">' +
+          '</label>' +
+          '<label class="field">' +
+            '<span class="field-label">Category</span>' +
+            '<select id="f-category">' + categories + '</select>' +
+          '</label>' +
+        '</div>' +
+        '<label class="field">' +
+          '<span class="field-label">Tags</span>' +
+          '<input id="f-tags" type="text" placeholder="work, personal (comma separated)" value="' + esc((d.tags || []).join(', ')) + '">' +
+        '</label>' +
+        '<label class="field">' +
+          '<span class="field-label">2FA / TOTP Authenticator Secret (optional)</span>' +
+          '<input id="f-totp" type="text" placeholder="e.g. JBSWY3DPEHPK3PXP or otpauth://..." value="' + esc(d.totp || '') + '" autocomplete="off" spellcheck="false">' +
+        '</label>' +
+        '<label class="field">' +
+          '<span class="field-label">Notes</span>' +
+          '<textarea id="f-notes" placeholder="Recovery codes, security question answers, anything else…" maxlength="4000" rows="3">' + esc(d.notes || '') + '</textarea>' +
+        '</label>' +
+        '<p class="form-error hidden" id="f-error" role="alert"></p>' +
+        '<div class="sheet-actions">' +
+          '<button type="button" class="btn ghost" data-close>Cancel</button>' +
+          '<button type="submit" class="btn primary" id="f-save">' + (isEdit ? 'Save changes' : 'Save password') + '</button>' +
+        '</div>' +
+      '</form>';
+  }
+
+  function readEntryForm() {
+    return {
+      title: $('#f-title') ? $('#f-title').value : '',
+      username: $('#f-username') ? $('#f-username').value : '',
+      password: $('#f-password') ? $('#f-password').value : '',
+      url: $('#f-url') ? $('#f-url').value : '',
+      category: $('#f-category') ? $('#f-category').value : 'General',
+      tags: $('#f-tags') ? $('#f-tags').value : '',
+      totp: $('#f-totp') ? $('#f-totp').value.trim() : '',
+      notes: $('#f-notes') ? $('#f-notes').value : '',
+    };
+  }
+
+  function openEntryForm(entry) {
+    const isEdit = !!(entry && entry.id);
+    const data = entry || {};
+    openSheet('entry', entryFormHTML(data), function (sheet) {
+      const form = $('#entry-form', sheet);
+      const passInput = $('#f-password', sheet);
+      const strength = $('#f-strength', sheet);
+      if (passInput.value) renderStrength(passInput, strength);
+
+      passInput.addEventListener('input', function () { renderStrength(passInput, strength); });
+
+      $('#f-generate', sheet).addEventListener('click', function () {
+        const draft = readEntryForm();
+        state.importedDraft = { mode: 'edit-form', entryId: isEdit ? entry.id : null, draft: draft };
+        openGenerator({
+          onUse: function (value) {
+            const restored = Object.assign({}, draft, { password: value });
+            if (isEdit) {
+              const original = S.getEntry(entry.id) || {};
+              openEntryForm(Object.assign({}, original, restored, { id: entry.id }));
+            } else {
+              openEntryForm(restored);
+            }
+          },
+        });
+      });
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        submitEntryForm(form, isEdit ? entry.id : null);
+      });
+
+      [passInput].forEach(function (el) {
+        el.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') { ev.preventDefault(); submitEntryForm(form, isEdit ? entry.id : null); }
+        });
+      });
+    });
+  }
+
+  async function submitEntryForm(form, editId) {
+    const errEl = $('#f-error', form);
+    const saveBtn = $('#f-save', form);
+    const data = readEntryForm();
+
+    function fail(msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    }
+
+    errEl.classList.add('hidden');
+    if (!String(data.title).trim()) return fail('Give this entry a title so you can find it later.');
+    if (!String(data.password).trim() && !String(data.notes).trim()) {
+      return fail('Add a password (or at least a note) before saving.');
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Encrypting…';
+    try {
+      if (editId) {
+        await S.updateEntry(editId, data);
+        closeSheet();
+        refresh();
+        toast('Changes saved');
+      } else {
+        await S.addEntry(data);
+        closeSheet();
+        refresh();
+        toast('Saved and encrypted');
+      }
+    } catch (err) {
+      fail('Could not save: ' + (err && err.message ? err.message : 'unknown error'));
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = editId ? 'Save changes' : 'Save password';
+    }
+  }
+
+  /* ---------- detail ---------- */
+
+  function openDetail(id) {
+    const entry = S.getEntry(id);
+    if (!entry) { toast('That entry no longer exists', 'err'); refresh(); return; }
+
+    const weak = entry.password && C.estimateEntropyBits(entry.password) < 45;
+    const strengthInfo = entry.password ? C.strengthLabel(C.estimateEntropyBits(entry.password)) : null;
+
+    const tagsHtml = (entry.tags && entry.tags.length)
+      ? entry.tags.map(function (t) { return '<span class="tag">#' + esc(t) + '</span>'; }).join('')
+      : '';
+
+    const urlHtml = entry.url
+      ? '<div class="kv-row">' +
+          '<div class="kv-label">Website</div>' +
+          '<div class="kv-value-row">' +
+            '<div class="kv-value"><a href="' + esc(normalizeUrl(entry.url)) + '" target="_blank" rel="noopener noreferrer">' + esc(entry.url) + '</a></div>' +
+            '<div class="kv-actions">' +
+              '<button class="icon-btn" data-act="copy-url" aria-label="Copy website">' + icon('copy') + '</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      : '';
+
+    const html = '' +
+      '<div class="detail-title-row">' +
+        '<div class="avatar" style="--hue:' + hueFor(entry.title) + '">' + esc(initials(entry.title)) + '</div>' +
+        '<h2>' + esc(entry.title) + '</h2>' +
+        '<button class="star-btn' + (entry.favorite ? ' active' : '') + '" id="d-fav" aria-label="Toggle favorite">' + icon('star') + '</button>' +
+        '<button type="button" class="icon-btn" data-close aria-label="Close">' + icon('x') + '</button>' +
+      '</div>' +
+      '<div class="detail-meta">' +
+        '<span class="tag accent">' + esc(entry.category) + '</span>' +
+        tagsHtml +
+        (weak ? '<span class="tag" style="color:var(--warn)">weak password</span>' : '') +
+        (strengthInfo && !weak ? '<span class="tag" style="color:var(--ok)">' + esc(strengthInfo.label) + '</span>' : '') +
+      '</div>' +
+      '<div class="kv">' +
+        (entry.username
+          ? '<div class="kv-row">' +
+              '<div class="kv-label">Username / Email</div>' +
+              '<div class="kv-value-row">' +
+                '<div class="kv-value">' + esc(entry.username) + '</div>' +
+                '<div class="kv-actions">' +
+                  '<button class="icon-btn" data-act="copy-user" aria-label="Copy username">' + icon('copy') + '</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+          : '') +
+        (entry.password
+          ? '<div class="kv-row">' +
+              '<div class="kv-label">Password</div>' +
+              '<div class="kv-value-row">' +
+                '<div class="kv-value masked" id="d-pass">••••••••••••</div>' +
+                '<div class="kv-actions">' +
+                  '<button class="icon-btn" id="d-reveal" aria-label="Show password">' + icon('eye') + '</button>' +
+                  '<button class="icon-btn" data-act="copy-pass" aria-label="Copy password">' + icon('copy') + '</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+          : '') +
+        (entry.totp
+          ? '<div class="kv-row" id="d-totp-row">' +
+              '<div class="kv-label">2FA / TOTP Authenticator <span id="d-totp-timer" style="font-weight:normal;opacity:0.7"></span></div>' +
+              '<div class="kv-value-row">' +
+                '<div class="kv-value mono" id="d-totp-code" style="font-size:1.35rem;letter-spacing:3px;font-weight:600;color:var(--accent-2)">------</div>' +
+                '<div class="kv-actions">' +
+                  '<button class="icon-btn" id="d-copy-totp" aria-label="Copy 2FA code">' + icon('copy') + '</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+          : '') +
+        urlHtml +
+        (entry.notes
+          ? '<div class="kv-row">' +
+              '<div class="kv-label">Notes</div>' +
+              '<div class="kv-text">' + esc(entry.notes) + '</div>' +
+              '<div style="display:flex;justify-content:flex-end;margin-top:6px">' +
+                '<button class="icon-btn" data-act="copy-notes" aria-label="Copy notes">' + icon('copy') + '</button>' +
+              '</div>' +
+            '</div>'
+          : '') +
+        (entry.history && entry.history.length
+          ? '<div class="kv-row">' +
+              '<details style="cursor:pointer">' +
+                '<summary class="kv-label" style="outline:none">Password history (' + entry.history.length + ' previous)</summary>' +
+                '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">' +
+                  entry.history.map(function (h) {
+                    return '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);padding:6px 10px;border-radius:8px">' +
+                      '<div>' +
+                        '<span class="mono" style="font-size:13px">' + esc(h.password) + '</span>' +
+                        '<div style="font-size:11px;color:var(--text-faint)">Changed ' + esc(timeAgo(h.changedAt)) + '</div>' +
+                      '</div>' +
+                      '<button type="button" class="icon-btn" data-act="copy-old" data-val="' + esc(h.password) + '" aria-label="Copy old password">' + icon('copy') + '</button>' +
+                    '</div>';
+                  }).join('') +
+                '</div>' +
+              '</details>' +
+            '</div>'
+          : '') +
+      '</div>' +
+      '<div class="detail-foot">' +
+        '<button class="btn ghost" id="d-delete">' + icon('trash') + 'Delete</button>' +
+        '<button class="btn primary" id="d-edit">' + icon('edit') + 'Edit</button>' +
+      '</div>' +
+      '<div class="detail-times">Added ' + esc(fullDate(entry.createdAt)) + ' · Updated ' + esc(timeAgo(entry.updatedAt)) + '</div>';
+
+    openSheet('detail', html, function (sheet) {
+      $('#d-fav', sheet).addEventListener('click', async function () {
+        const updated = await S.toggleFavorite(id);
+        if (updated) {
+          const btn = $('#d-fav', sheet);
+          btn.classList.toggle('active', updated.favorite);
+          refresh();
+        }
+      });
+
+      const revealBtn = $('#d-reveal', sheet);
+      if (revealBtn) {
+        revealBtn.addEventListener('click', function () {
+          const el = $('#d-pass', sheet);
+          const shown = el.dataset.shown === 'true';
+          if (shown) {
+            el.textContent = '••••••••••••';
+            el.dataset.shown = 'false';
+            el.classList.add('masked');
+            revealBtn.innerHTML = icon('eye');
+            if (state.revealTimer) { clearTimeout(state.revealTimer); state.revealTimer = null; }
+          } else {
+            const fresh = S.getEntry(id);
+            el.textContent = fresh ? fresh.password : '';
+            el.dataset.shown = 'true';
+            el.classList.remove('masked');
+            revealBtn.innerHTML = icon('eye-off');
+            if (state.revealTimer) clearTimeout(state.revealTimer);
+            state.revealTimer = setTimeout(function () {
+              const node = document.getElementById('d-pass');
+              if (node && node.dataset.shown === 'true') {
+                node.textContent = '••••••••••••';
+                node.dataset.shown = 'false';
+                node.classList.add('masked');
+              }
+            }, 30000);
+          }
+        });
+      }
+
+      if (entry.totp) {
+        let totpTimer = null;
+        async function updateTOTP() {
+          const codeEl = $('#d-totp-code', sheet);
+          const timerEl = $('#d-totp-timer', sheet);
+          if (!codeEl) {
+            if (totpTimer) clearInterval(totpTimer);
+            return;
+          }
+          const res = await C.generateTOTP(entry.totp);
+          if (res) {
+            codeEl.textContent = res.code.slice(0, 3) + ' ' + res.code.slice(3);
+            if (timerEl) timerEl.textContent = '(' + res.remaining + 's)';
+          } else {
+            codeEl.textContent = 'Invalid secret';
+          }
+        }
+        updateTOTP();
+        totpTimer = setInterval(updateTOTP, 1000);
+
+        const copyTotp = $('#d-copy-totp', sheet);
+        if (copyTotp) {
+          copyTotp.addEventListener('click', async function () {
+            const res = await C.generateTOTP(entry.totp);
+            if (res && res.code) {
+              await copyText(res.code, '2FA Code', { secret: true });
+            } else {
+              toast('Invalid 2FA secret', 'err');
+            }
+          });
+        }
+      }
+
+      sheet.addEventListener('click', function (event) {
+        const btn = event.target.closest('[data-act]');
+        if (!btn) return;
+        const act = btn.getAttribute('data-act');
+        const fresh = S.getEntry(id);
+        if (!fresh) return;
+        if (act === 'copy-user') copyText(fresh.username, 'Username', { secret: false });
+        if (act === 'copy-pass') copyText(fresh.password, 'Password', { secret: true });
+        if (act === 'copy-url') copyText(fresh.url, 'Website', { secret: false });
+        if (act === 'copy-notes') copyText(fresh.notes, 'Notes', { secret: false });
+        if (act === 'copy-old') copyText(btn.getAttribute('data-val'), 'Previous password', { secret: true });
+      });
+
+      $('#d-edit', sheet).addEventListener('click', function () { openEntryForm(S.getEntry(id)); });
+      $('#d-delete', sheet).addEventListener('click', function () { confirmDelete(id); });
+    });
+  }
+
+  function confirmDelete(id) {
+    const entry = S.getEntry(id);
+    if (!entry) return;
+    const html = '' +
+      '<div class="confirm">' +
+        '<div class="confirm-icon">' + icon('trash') + '</div>' +
+        '<h2>Delete this password?</h2>' +
+        '<p><strong style="color:var(--text)">' + esc(entry.title) + '</strong> will be removed from the vault on this device. This cannot be undone unless you have a backup.</p>' +
+        '<div class="sheet-actions">' +
+          '<button type="button" class="btn ghost" data-close>Keep it</button>' +
+          '<button class="btn danger solid" id="confirm-delete">Delete</button>' +
+        '</div>' +
+      '</div>';
+    openSheet('delete', html, function (sheet) {
+      $('#confirm-delete', sheet).addEventListener('click', async function () {
+        await S.deleteEntry(id);
+        closeSheet();
+        refresh();
+        toast('Deleted');
+      });
+    });
+  }
+
+  /* ==========================================================
+     6. generator
+     ========================================================== */
+
+  function generatorHTML() {
+    const g = currentSettings().generator || S.DEFAULT_SETTINGS.generator;
+    return '' +
+      '<div class="sheet-form">' +
+        sheetHead('Password generator', 'dice') +
+        '<div class="chips" style="margin-top:-6px">' +
+          '<button class="chip' + (g.mode !== 'passphrase' ? ' active' : '') + '" id="gen-tab-pass">Random</button>' +
+          '<button class="chip' + (g.mode === 'passphrase' ? ' active' : '') + '" id="gen-tab-phrase">Passphrase</button>' +
+        '</div>' +
+        '<div class="gen-output">' +
+          '<span class="gen-value" id="gen-value">' + esc(C.generatePassword(g)) + '</span>' +
+          '<button class="icon-btn" id="gen-refresh" aria-label="Regenerate">' + icon('refresh') + '</button>' +
+        '</div>' +
+        '<div class="gen-strength"><div class="strength" id="gen-strength"><div class="strength-track"><i></i></div><span class="strength-label">—</span></div></div>' +
+
+        '<div id="gen-passopts">' +
+          '<div class="gen-controls">' +
+            '<div class="gen-length-row">' +
+              '<label for="gen-length">Length</label>' +
+              '<input type="range" id="gen-length" min="8" max="64" value="' + Number(g.length) + '">' +
+              '<span class="gen-length-val" id="gen-length-val">' + Number(g.length) + '</span>' +
+            '</div>' +
+            '<div class="gen-toggles">' +
+              '<label class="gen-toggle"><input type="checkbox" id="gen-lower"' + (g.lowercase ? ' checked' : '') + '> a-z</label>' +
+              '<label class="gen-toggle"><input type="checkbox" id="gen-upper"' + (g.uppercase ? ' checked' : '') + '> A-Z</label>' +
+              '<label class="gen-toggle"><input type="checkbox" id="gen-digits"' + (g.digits ? ' checked' : '') + '> 0-9</label>' +
+              '<label class="gen-toggle"><input type="checkbox" id="gen-symbols"' + (g.symbols ? ' checked' : '') + '> Symbols</label>' +
+            '</div>' +
+            '<label class="gen-toggle" style="justify-content:flex-start">' +
+              '<input type="checkbox" id="gen-ambig"' + (g.avoidAmbiguous ? ' checked' : '') + '> Avoid look-alike characters (l, 1, O, 0)' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
+
+        '<div id="gen-phraseopts" class="hidden">' +
+          '<div class="gen-controls">' +
+            '<div class="gen-length-row">' +
+              '<label for="gen-words">Words</label>' +
+              '<input type="range" id="gen-words" min="3" max="8" value="' + Number(g.words || 4) + '">' +
+              '<span class="gen-length-val" id="gen-words-val">' + Number(g.words || 4) + '</span>' +
+            '</div>' +
+            '<div class="gen-toggles">' +
+              '<label class="gen-toggle"><input type="checkbox" id="gen-cap" checked> Capitalise</label>' +
+              '<label class="gen-toggle"><input type="checkbox" id="gen-num" checked> Add a number</label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="gen-actions">' +
+          '<button class="btn ghost" id="gen-copy">' + icon('copy') + 'Copy</button>' +
+          '<button class="btn primary" id="gen-use">Use this password</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function openGenerator(options) {
+    const opts = options || {};
+    openSheet('generator', generatorHTML(), function (sheet) {
+      const valueEl = $('#gen-value', sheet);
+      const strengthEl = $('#gen-strength', sheet);
+      const stateGen = {
+        mode: (currentSettings().generator.mode === 'passphrase') ? 'passphrase' : 'password',
+      };
+
+      function currentOpts() {
+        return {
+          length: Number($('#gen-length', sheet).value),
+          lowercase: $('#gen-lower', sheet).checked,
+          uppercase: $('#gen-upper', sheet).checked,
+          digits: $('#gen-digits', sheet).checked,
+          symbols: $('#gen-symbols', sheet).checked,
+          avoidAmbiguous: $('#gen-ambig', sheet).checked,
+          words: Number($('#gen-words', sheet).value),
+          capitalize: $('#gen-cap', sheet).checked,
+          addNumber: $('#gen-num', sheet).checked,
+        };
+      }
+
+      function regenerate() {
+        const o = currentOpts();
+        const value = stateGen.mode === 'passphrase'
+          ? C.generatePassphrase(o)
+          : C.generatePassword(o);
+        valueEl.textContent = value;
+        // strength meter
+        const bits = C.estimateEntropyBits(value);
+        const info = C.strengthLabel(bits);
+        const fill = strengthEl.querySelector('i');
+        const label = strengthEl.querySelector('.strength-label');
+        const colors = ['#ff6b81', '#ff8a5c', '#f5b759', '#3ddc97', '#22d3ee'];
+        fill.style.width = [8, 25, 46, 69, 92][info.level] + '%';
+        fill.style.background = colors[info.level];
+        label.textContent = info.label;
+        label.style.color = colors[info.level];
+        return value;
+      }
+
+      function syncRange(rangeEl, valEl) {
+        const min = Number(rangeEl.min);
+        const max = Number(rangeEl.max);
+        const pct = ((Number(rangeEl.value) - min) / (max - min)) * 100;
+        rangeEl.style.setProperty('--fill', pct + '%');
+        if (valEl) valEl.textContent = rangeEl.value;
+      }
+
+      function applyMode() {
+        const isPhrase = stateGen.mode === 'passphrase';
+        $('#gen-tab-pass', sheet).classList.toggle('active', !isPhrase);
+        $('#gen-tab-phrase', sheet).classList.toggle('active', isPhrase);
+        $('#gen-passopts', sheet).classList.toggle('hidden', isPhrase);
+        $('#gen-phraseopts', sheet).classList.toggle('hidden', !isPhrase);
+        regenerate();
+      }
+
+      $('#gen-tab-pass', sheet).addEventListener('click', function () { stateGen.mode = 'password'; applyMode(); });
+      $('#gen-tab-phrase', sheet).addEventListener('click', function () { stateGen.mode = 'passphrase'; applyMode(); });
+
+      const lengthEl = $('#gen-length', sheet);
+      const wordsEl = $('#gen-words', sheet);
+      syncRange(lengthEl, $('#gen-length-val', sheet));
+      syncRange(wordsEl, $('#gen-words-val', sheet));
+
+      lengthEl.addEventListener('input', function () {
+        syncRange(lengthEl, $('#gen-length-val', sheet));
+        regenerate();
+      });
+      wordsEl.addEventListener('input', function () {
+        syncRange(wordsEl, $('#gen-words-val', sheet));
+        regenerate();
+      });
+
+      ['gen-lower', 'gen-upper', 'gen-digits', 'gen-symbols', 'gen-ambig', 'gen-cap', 'gen-num']
+        .forEach(function (id) {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('change', regenerate);
+        });
+
+      $('#gen-refresh', sheet).addEventListener('click', regenerate);
+
+      $('#gen-copy', sheet).addEventListener('click', function () {
+        copyText(valueEl.textContent, 'Password', { secret: true });
+      });
+
+      $('#gen-use', sheet).addEventListener('click', function () {
+        const value = valueEl.textContent;
+        if (typeof opts.onUse === 'function') {
+          closeSheet();
+          opts.onUse(value);
+        } else {
+          copyText(value, 'Password', { secret: true });
+          closeSheet();
+        }
+      });
+
+      // remember the generator setup for next time
+      sheet.addEventListener('change', function () {
+        const o = currentOpts();
+        S.updateSettings({
+          generator: Object.assign({}, o, { mode: stateGen.mode }),
+        }).catch(function () { /* settings are best-effort */ });
+      });
+
+      applyMode();
+    });
+  }
+
+  /* ==========================================================
+     7. settings + backup
+     ========================================================== */
+
+  function settingsHTML() {
+    const settings = S.getSettings();
+    const stats = S.entryStats();
+    const bytes = S.byteSize();
+    const trash = S.getTrash();
+    const trashCount = trash.length;
+    const sizeLabel = bytes > 1024 * 1024
+      ? (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+      : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+
+    function option(value, label, selected) {
+      return '<option value="' + value + '"' + (selected ? ' selected' : '') + '>' + label + '</option>';
+    }
+
+    const autoLockOpts = [
+      option(0, 'Off', settings.autoLockMinutes === 0),
+      option(1, '1 min', settings.autoLockMinutes === 1),
+      option(5, '5 min', settings.autoLockMinutes === 5),
+      option(15, '15 min', settings.autoLockMinutes === 15),
+      option(30, '30 min', settings.autoLockMinutes === 30),
+      option(60, '1 hour', settings.autoLockMinutes === 60),
+    ].join('');
+
+    const clipOpts = [
+      option(0, 'Never', settings.clipboardClearSeconds === 0),
+      option(15, '15 s', settings.clipboardClearSeconds === 15),
+      option(30, '30 s', settings.clipboardClearSeconds === 30),
+      option(60, '60 s', settings.clipboardClearSeconds === 60),
+      option(120, '2 min', settings.clipboardClearSeconds === 120),
+    ].join('');
+
+    return '' +
+      '<div class="sheet-form">' +
+        sheetHead('Settings', 'settings') +
+
+        '<div class="settings-group">' +
+          '<h3>Security</h3>' +
+          '<div class="settings-card">' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Auto-lock</div><div class="s">Lock the vault after a period of inactivity</div></div>' +
+              '<select id="set-autolock">' + autoLockOpts + '</select>' +
+            '</div>' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Clear clipboard</div><div class="s">Wipe copied passwords after a delay</div></div>' +
+              '<select id="set-clip">' + clipOpts + '</select>' +
+            '</div>' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Master password</div><div class="s">Change the key that encrypts this vault</div></div>' +
+              '<button class="btn ghost small" id="set-change-pass">Change</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="settings-group">' +
+          '<h3>Backup &amp; transfer</h3>' +
+          '<div class="settings-card">' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Export backup</div><div class="s">Encrypted .json file — move it to another phone</div></div>' +
+              '<button class="btn ghost small" id="set-export">' + icon('download') + 'Export</button>' +
+            '</div>' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Import backup</div><div class="s">Restore or merge from a backup file</div></div>' +
+              '<button class="btn ghost small" id="set-import">' + icon('upload') + 'Import</button>' +
+            '</div>' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Install on this phone</div><div class="s">Add Keyring to your home screen</div></div>' +
+              '<button class="btn ghost small" id="set-install">Install</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="settings-group">' +
+          '<h3>Vault health</h3>' +
+          '<div class="settings-card">' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Stored entries</div><div class="s">' +
+                stats.total + ' total · ' + stats.favorites + ' favorites · ' +
+                '<span style="color:' + (stats.weak ? 'var(--warn)' : 'var(--ok)') + '">' + stats.weak + ' weak</span> · ' +
+                '<span style="color:' + (stats.reused ? 'var(--warn)' : 'var(--ok)') + '">' + stats.reused + ' reused</span>' +
+              '</div></div>' +
+              '<span class="storage-pill"><span id="dot"></span>' + sizeLabel + '</span>' +
+            '</div>' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Encryption</div><div class="s">AES-256-GCM · PBKDF2-SHA256 · ' + Number(C.KDF_ITERATIONS).toLocaleString() + ' iterations</div></div>' +
+              '<span class="storage-pill">Active</span>' +
+            '</div>' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Storage</div><div class="s">' +
+                (S.isPersistent()
+                  ? 'Saved on this device, encrypted at rest'
+                  : 'Preview mode — this window blocks storage, nothing is saved') +
+              '</div></div>' +
+              '<span class="storage-pill' + (S.isPersistent() ? '' : ' warn') + '">' +
+                (S.isPersistent() ? 'On device' : 'In memory') +
+              '</span>' +
+            '</div>' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Trash bin</div><div class="s">' + trashCount + ' deleted item' + (trashCount === 1 ? '' : 's') + '</div></div>' +
+              (trashCount > 0
+                ? '<button class="btn ghost small" id="set-empty-trash">Empty trash</button>'
+                : '<span class="storage-pill">Empty</span>') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="settings-group">' +
+          '<h3>Danger zone</h3>' +
+          '<div class="settings-card">' +
+            '<div class="settings-item">' +
+              '<div class="settings-text"><div class="t">Delete vault</div><div class="s">Erase every entry from this device. Export a backup first.</div></div>' +
+              '<button class="btn danger small" id="set-wipe">Erase</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="about-line">' +
+          '<span>Keyring v1.0</span><span>Offline · no accounts · no tracking</span><span>Data never leaves this device</span>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function openSettings() {
+    // keep the locked-state snapshot accurate (sort order, generator setup)
+    const settings = S.getSettings();
+    state.sort = settings.sortMode || state.sort;
+    renderChips();
+    openSheet('settings', settingsHTML(), function (sheet) {
+      $('#set-autolock', sheet).addEventListener('change', async function (e) {
+        await S.updateSettings({ autoLockMinutes: Number(e.target.value) });
+        startIdleWatch();
+        toast('Auto-lock updated');
+      });
+
+      $('#set-clip', sheet).addEventListener('change', async function (e) {
+        await S.updateSettings({ clipboardClearSeconds: Number(e.target.value) });
+        toast('Clipboard setting saved');
+      });
+
+      const emptyTrashBtn = $('#set-empty-trash', sheet);
+      if (emptyTrashBtn) {
+        emptyTrashBtn.addEventListener('click', async function () {
+          if (!window.confirm('Permanently delete all items in trash?')) return;
+          await S.emptyTrash();
+          toast('Trash emptied');
+          closeSheet();
+          refresh();
+        });
+      }
+
+      $('#set-change-pass', sheet).addEventListener('click', openChangeMasterPassword);
+      $('#set-export', sheet).addEventListener('click', openExport);
+      $('#set-import', sheet).addEventListener('click', openImport);
+      $('#set-install', sheet).addEventListener('click', function () {
+        promptInstall();
+      });
+      $('#set-wipe', sheet).addEventListener('click', openWipe);
+    });
+  }
+
+  function openChangeMasterPassword() {
+    const html = '' +
+      '<form class="sheet-form" id="chg-form" autocomplete="off" novalidate>' +
+        sheetHead('Change master password', 'lock') +
+        '<p class="sheet-sub" style="margin-top:-8px">Your entries stay the same — they get re-encrypted with a new key. Backups you made earlier still need the <strong>old</strong> password to open.</p>' +
+        '<label class="field"><span class="field-label">Current password</span>' +
+          '<input id="chg-current" type="password" autocomplete="current-password" placeholder="Current master password">' +
+        '</label>' +
+        '<label class="field"><span class="field-label">New password</span>' +
+          '<input id="chg-new" type="password" autocomplete="new-password" placeholder="At least 8 characters">' +
+        '</label>' +
+        '<label class="field"><span class="field-label">Confirm new password</span>' +
+          '<input id="chg-confirm" type="password" autocomplete="new-password" placeholder="Repeat new password">' +
+        '</label>' +
+        '<p class="form-error hidden" id="chg-error" role="alert"></p>' +
+        '<div class="sheet-actions">' +
+          '<button type="button" class="btn ghost" data-close>Cancel</button>' +
+          '<button type="submit" class="btn primary">Update password</button>' +
+        '</div>' +
+      '</form>';
+
+    openSheet('change-password', html, function (sheet) {
+      $('#chg-form', sheet).addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const errEl = $('#chg-error', sheet);
+        const current = $('#chg-current', sheet).value;
+        const next = $('#chg-new', sheet).value;
+        const confirm = $('#chg-confirm', sheet).value;
+
+        function fail(msg) {
+          errEl.textContent = msg;
+          errEl.classList.remove('hidden');
+        }
+        errEl.classList.add('hidden');
+        if (next.length < 8) return fail('The new password needs at least 8 characters.');
+        if (next !== confirm) return fail('The new passwords do not match.');
+        if (C.estimateEntropyBits(next) < 45) return fail('That new password is too easy to guess.');
+
+        const result = await S.changeMasterPassword(current, next);
+        if (!result.ok) {
+          if (result.reason === 'bad-password') return fail('Current password is incorrect.');
+          return fail('Could not change the password. Try again.');
+        }
+        closeSheet();
+        toast('Master password updated');
+      });
+    });
+  }
+
+  /* ---------- export ---------- */
+
+  function downloadFile(filename, text, mime) {
+    const blob = new Blob([text], { type: mime || 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1200);
+    return blob;
+  }
+
+  function openExport() {
+    let backup;
+    try {
+      backup = S.exportBackup();
+    } catch (err) {
+      toast('Could not create the backup', 'err');
+      return;
+    }
+
+    const canShare = !!(navigator.canShare && window.File);
+    const html = '' +
+      '<div class="sheet-form">' +
+        sheetHead('Export backup', 'download') +
+        '<p class="sheet-sub" style="margin-top:-8px">' +
+          'A single file with all <strong>' + backup.entryCount + '</strong> ' +
+          (backup.entryCount === 1 ? 'entry' : 'entries') +
+          ', encrypted with your master password. Without that password the file is unreadable — that is what makes it safe to email or upload.</p>' +
+        '<div class="kv-row" style="margin-bottom:4px">' +
+          '<div class="kv-label">File name</div>' +
+          '<div class="kv-text" style="font-family:var(--mono);font-size:13px">' + esc(backup.filename) + '</div>' +
+        '</div>' +
+        '<div class="gen-actions" style="flex-direction:column;margin-top:6px">' +
+          '<button class="btn primary" id="exp-download">' + icon('download') + 'Download backup file</button>' +
+          (canShare ? '<button class="btn ghost" id="exp-share">' + icon('upload') + 'Share to another app</button>' : '') +
+          '<button class="btn ghost" id="exp-copy">' + icon('copy') + 'Copy backup text</button>' +
+        '</div>' +
+        '<p class="hint" style="margin-top:14px">To move phones: export here → send the file to your new phone (WhatsApp, Drive, AirDrop, USB) → install Keyring there → Settings → Import backup.</p>' +
+      '</div>';
+
+    openSheet('export', html, function (sheet) {
+      $('#exp-download', sheet).addEventListener('click', function () {
+        downloadFile(backup.filename, backup.json, 'application/json');
+        toast('Backup downloaded');
+      });
+
+      const shareBtn = $('#exp-share', sheet);
+      if (shareBtn) {
+        shareBtn.addEventListener('click', async function () {
+          try {
+            const file = new File([backup.json], backup.filename, { type: 'application/json' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'Keyring backup',
+                text: 'Encrypted Keyring vault backup',
+              });
+              return;
+            }
+            throw new Error('share unsupported');
+          } catch (err) {
+            downloadFile(backup.filename, backup.json, 'application/json');
+            toast('Sharing unavailable — downloaded instead');
+          }
+        });
+      }
+
+      $('#exp-copy', sheet).addEventListener('click', function () {
+        copyText(backup.json, 'Backup', { secret: false });
+      });
+    });
+  }
+
+  /* ---------- import ---------- */
+
+  function openImport(presetText, presetName) {
+    const html = '' +
+      '<form class="sheet-form" id="imp-form" autocomplete="off" novalidate>' +
+        sheetHead('Import passwords', 'upload') +
+        '<p class="sheet-sub" style="margin-top:-8px">Select an encrypted Keyring backup (.json) or an unencrypted CSV export from Chrome, Firefox, Bitwarden, or 1Password.</p>' +
+        '<label class="field">' +
+          '<span class="field-label">File (.json or .csv)</span>' +
+          '<input id="imp-file" type="file" accept=".json,.csv,application/json,text/csv,text/plain">' +
+        '</label>' +
+        '<label class="field">' +
+          '<span class="field-label">…or paste text</span>' +
+          '<textarea id="imp-text" rows="3" placeholder="Paste .json backup or .csv content" spellcheck="false">' + esc(presetText || '') + '</textarea>' +
+        '</label>' +
+        '<label class="field" id="imp-pass-field">' +
+          '<span class="field-label">Backup password (only for .json backups)</span>' +
+          '<input id="imp-pass" type="password" placeholder="Master password of the backup" autocomplete="off" spellcheck="false">' +
+        '</label>' +
+        '<label class="field">' +
+          '<span class="field-label">How to bring it in</span>' +
+          '<select id="imp-mode">' +
+            '<option value="merge">Merge — keep existing entries, add new ones</option>' +
+            '<option value="replace">Replace — wipe this vault and use the backup</option>' +
+          '</select>' +
+        '</label>' +
+        '<p class="form-error hidden" id="imp-error" role="alert"></p>' +
+        '<div class="sheet-actions">' +
+          '<button type="button" class="btn ghost" data-close>Cancel</button>' +
+          '<button type="submit" class="btn primary" id="imp-submit">Import</button>' +
+        '</div>' +
+      '</form>';
+
+    openSheet('import', html, function (sheet) {
+      const fileInput = $('#imp-file', sheet);
+      const textArea = $('#imp-text', sheet);
+      const passField = $('#imp-pass-field', sheet);
+      const errEl = $('#imp-error', sheet);
+
+      function checkFormat() {
+        const val = textArea.value.trim();
+        const isCsv = !val.startsWith('{') && val.includes(',') && val.includes('\n');
+        if (isCsv) {
+          if (passField) passField.classList.add('hidden');
+          errEl.textContent = 'Detected unencrypted CSV file. Passwords will be encrypted into your Keyring vault.';
+          errEl.style.color = 'var(--accent-2)';
+          errEl.classList.remove('hidden');
+        } else {
+          if (passField) passField.classList.remove('hidden');
+          errEl.style.color = '';
+          errEl.classList.add('hidden');
+        }
+      }
+
+      if (presetName) textArea.setAttribute('data-filename', presetName);
+      textArea.addEventListener('input', checkFormat);
+
+      fileInput.addEventListener('change', function () {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+          textArea.value = String(reader.result || '');
+          textArea.setAttribute('data-filename', file.name);
+          checkFormat();
+          if (textArea.value.trim().startsWith('{')) {
+            const parsed = S.parseBackup(textArea.value);
+            if (!parsed.ok) {
+              errEl.textContent = parsed.reason === 'version'
+                ? 'That backup was made by a newer version of Keyring.'
+                : 'That file does not look like a Keyring backup.';
+              errEl.classList.remove('hidden');
+            }
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      $('#imp-form', sheet).addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const btn = $('#imp-submit', sheet);
+        const text = textArea.value;
+        const password = $('#imp-pass', sheet).value;
+        const mode = $('#imp-mode', sheet).value;
+
+        function fail(msg) {
+          errEl.textContent = msg;
+          errEl.style.color = '';
+          errEl.classList.remove('hidden');
+        }
+
+        errEl.classList.add('hidden');
+        errEl.style.color = '';
+        const trimmed = text.trim();
+        if (!trimmed) return fail('Choose a file or paste its contents.');
+
+        const isCsv = !trimmed.startsWith('{') && trimmed.includes(',') && trimmed.includes('\n');
+        if (isCsv) {
+          if (mode === 'replace' && !window.confirm('Replace mode erases the current vault contents. Continue?')) return;
+          btn.disabled = true;
+          btn.textContent = 'Importing CSV…';
+          const result = await S.importCSV(trimmed, mode);
+          btn.disabled = false;
+          btn.textContent = 'Import';
+          if (!result.ok) {
+            return fail('Could not parse CSV. Ensure it has header columns like name, username, password.');
+          }
+          closeSheet();
+          toast(mode === 'replace'
+            ? 'Vault replaced from CSV — ' + result.imported + ' entries'
+            : result.imported + ' imported from CSV · ' + result.skipped + ' skipped');
+          state.filter = 'all';
+          state.search = '';
+          $('#search').value = '';
+          $('#search-clear').classList.add('hidden');
+          refresh();
+          return;
+        }
+
+        if (!password) return fail('Enter the password that was used for this backup.');
+        if (mode === 'replace' && !window.confirm('Replace mode erases the current vault contents. Continue?')) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Decrypting…';
+        const result = await S.importBackup(text, password, mode);
+        btn.disabled = false;
+        btn.textContent = 'Import';
+
+        if (!result.ok) {
+          if (result.reason === 'bad-password') return fail('That password does not open this backup.');
+          if (result.reason === 'not-backup' || result.reason === 'not-json') {
+            return fail('This does not look like a Keyring backup file.');
+          }
+          if (result.reason === 'version') return fail('Backup made with a newer version of Keyring.');
+          return fail('Import failed. The file may be damaged.');
+        }
+
+        closeSheet();
+        toast(mode === 'replace'
+          ? 'Vault replaced — ' + result.imported + ' entries'
+          : result.imported + ' imported · ' + result.skipped + ' skipped as duplicates');
+        state.filter = 'all';
+        state.search = '';
+        $('#search').value = '';
+        $('#search-clear').classList.add('hidden');
+        refresh();
+      });
+    });
+  }
+
+  /* ---------- wipe ---------- */
+
+  function openWipe() {
+    const html = '' +
+      '<form class="sheet-form" id="wipe-form" autocomplete="off" novalidate>' +
+        '<div class="confirm">' +
+          '<div class="confirm-icon">' + icon('alert') + '</div>' +
+          '<h2>Erase the whole vault?</h2>' +
+          '<p>Every password on this device will be deleted permanently. If you have not exported a backup, there is no way back.</p>' +
+        '</div>' +
+        '<label class="field">' +
+          '<span class="field-label">Type DELETE to confirm</span>' +
+          '<input id="wipe-confirm" type="text" placeholder="DELETE" autocapitalize="characters" spellcheck="false">' +
+        '</label>' +
+        '<p class="form-error hidden" id="wipe-error" role="alert"></p>' +
+        '<div class="sheet-actions">' +
+          '<button type="button" class="btn ghost" data-close>Cancel</button>' +
+          '<button type="submit" class="btn danger solid" id="wipe-go">Erase everything</button>' +
+        '</div>' +
+      '</form>';
+
+    openSheet('wipe', html, function (sheet) {
+      $('#wipe-form', sheet).addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const value = $('#wipe-confirm', sheet).value.trim();
+        const errEl = $('#wipe-error', sheet);
+        if (value !== 'DELETE') {
+          errEl.textContent = 'Type DELETE (in capitals) to confirm.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        await S.wipeAll();
+        closeSheet(true);
+        showSetup();
+        toast('Vault erased from this device');
+      });
+    });
+  }
+
+  /* ==========================================================
+     8. auto-lock
+     ========================================================== */
+
+  let idleInterval = null;
+
+  function startIdleWatch() {
+    stopIdleWatch();
+    state.lastActivity = Date.now();
+    idleInterval = setInterval(checkIdle, 5000);
+  }
+
+  function stopIdleWatch() {
+    if (idleInterval) { clearInterval(idleInterval); idleInterval = null; }
+  }
+
+  function checkIdle() {
+    if (!S.isUnlocked()) return;
+    const minutes = S.getSettings().autoLockMinutes;
+    if (!minutes) return;
+    if (Date.now() - state.lastActivity > minutes * 60 * 1000) {
+      lockVault(true);
+    }
+  }
+
+  function noteActivity() {
+    state.lastActivity = Date.now();
+  }
+
+  /* ==========================================================
+     9. PWA glue
+     ========================================================== */
+
+  function isStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      window.navigator.standalone === true;
+  }
+
+  function applyStorageNotice() {
+    const kind = S.getStorageKind();
+    const banner = $('#banner');
+    if (!banner) return false;
+
+    if (kind === 'no-crypto') {
+      banner.className = 'banner err';
+      banner.innerHTML = '<strong>Encryption unavailable.</strong> This page is not a secure context, ' +
+        'so the browser will not run WebCrypto. Open Keyring over https — or from the hosted preview / installed app.';
+      banner.classList.remove('hidden');
+      return true;
+    }
+
+    if (kind === 'memory') {
+      banner.className = 'banner';
+      banner.innerHTML = '<strong>Preview mode — not saved.</strong> This window blocks local storage, so the vault ' +
+        'lives in memory only and disappears when you reload. Open Keyring in a normal browser tab (or install it) to keep your passwords.';
+      banner.classList.remove('hidden');
+      return true;
+    }
+
+    return false;
+  }
+
+  function maybeShowInstallBanner() {
+    const settings = S.getSettings();
+    if (isStandalone() || settings.installBannerDismissed) return;
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const banner = $('#banner');
+    const hasPrompt = !!(window.KeyringPWA && window.KeyringPWA.getInstallEvent());
+
+    if (hasPrompt) {
+      banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between">' +
+        '<span><strong>Install Keyring</strong> — full-screen, offline, on your home screen.</span>' +
+        '<span style="display:flex;gap:6px;flex:none">' +
+          '<button class="btn small primary" id="banner-install">Install</button>' +
+          '<button class="icon-btn" id="banner-dismiss" aria-label="Dismiss">' + icon('x') + '</button>' +
+        '</span></div>';
+      banner.classList.remove('hidden');
+      $('#banner-install').addEventListener('click', promptInstall);
+      $('#banner-dismiss').addEventListener('click', dismissBanner);
+    } else if (isIOS) {
+      banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between">' +
+        '<span><strong>Install on iPhone:</strong> tap the Share button, then “Add to Home Screen”.</span>' +
+        '<button class="icon-btn" id="banner-dismiss" aria-label="Dismiss">' + icon('x') + '</button></div>';
+      banner.classList.remove('hidden');
+      $('#banner-dismiss').addEventListener('click', dismissBanner);
+    }
+  }
+
+  function dismissBanner() {
+    $('#banner').classList.add('hidden');
+    S.updateSettings({ installBannerDismissed: true }).catch(function () { /* ignore */ });
+  }
+
+  async function promptInstall() {
+    const evt = window.KeyringPWA ? window.KeyringPWA.getInstallEvent() : null;
+
+    if (evt) {
+      if (window.KeyringPWA) window.KeyringPWA.clearInstallEvent();
+      evt.prompt();
+      try {
+        const choice = await evt.userChoice;
+        if (choice && choice.outcome === 'accepted') toast('Installing Keyring…');
+      } catch (err) { /* user dismissed */ }
+      refreshInstallButton();
+      return;
+    }
+
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const steps = isIOS
+      ? '<ol style="padding-left:18px;margin:8px 0 0;display:flex;flex-direction:column;gap:8px">' +
+          '<li>Open Keyring in <strong>Safari</strong> (not inside another app).</li>' +
+          '<li>Tap the <strong>Share</strong> icon in the toolbar.</li>' +
+          '<li>Scroll and choose <strong>Add to Home Screen</strong>.</li>' +
+          '<li>Tap <strong>Add</strong> — Keyring opens full-screen and offline.</li>' +
+        '</ol>'
+      : '<ol style="padding-left:18px;margin:8px 0 0;display:flex;flex-direction:column;gap:8px">' +
+          '<li>Open the browser menu (⋮).</li>' +
+          '<li>Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>' +
+          '<li>Confirm — Keyring gets its own icon and works offline.</li>' +
+        '</ol>';
+
+    const html = '<div class="sheet-form">' +
+      sheetHead('Install Keyring', 'download') +
+      '<p class="sheet-sub" style="margin-top:-8px">Installing gives you a full-screen app with its own icon that works with no internet.</p>' +
+      '<div class="kv-row"><div class="kv-text">' + steps + '</div></div>' +
+      '<div class="sheet-actions"><button type="button" class="btn primary" data-close>Got it</button></div>' +
+    '</div>';
+
+    openSheet('install', html);
+  }
+
+  function refreshInstallButton() {
+    const btn = $('#btn-install');
+    if (!btn) return;
+    if (isStandalone()) {
+      btn.classList.add('hidden');
+      return;
+    }
+    btn.classList.remove('hidden');
+  }
+
+  /* ==========================================================
+     10. events + boot
+     ========================================================== */
+
+  function bindEvents() {
+    /* gate */
+    $('#setup-form').addEventListener('submit', handleSetup);
+    $('#unlock-form').addEventListener('submit', handleUnlock);
+
+    const setupPass = $('#setup-password');
+    const setupStrength = $('#setup-strength');
+    setupPass.addEventListener('input', function () { renderStrength(setupPass, setupStrength); });
+
+    /* password visibility toggles (delegated so dynamic sheets work) */
+    document.addEventListener('click', function (event) {
+      const toggle = event.target.closest('[data-toggle-pass]');
+      if (!toggle) return;
+      const input = document.getElementById(toggle.getAttribute('data-toggle-pass'));
+      if (!input) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      toggle.innerHTML = icon(show ? 'eye-off' : 'eye');
+      toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+
+    /* app chrome */
+    $('#btn-settings').addEventListener('click', openSettings);
+    $('#btn-generator').addEventListener('click', function () { openGenerator({}); });
+    $('#btn-lock').addEventListener('click', function () { lockVault(false); });
+    $('#btn-install').addEventListener('click', promptInstall);
+    $('#fab').addEventListener('click', function () { openEntryForm(null); });
+    $('#empty-cta').addEventListener('click', function () { openEntryForm(null); });
+
+    /* search */
+    const searchEl = $('#search');
+    searchEl.addEventListener('input', function () {
+      state.search = searchEl.value;
+      $('#search-clear').classList.toggle('hidden', !searchEl.value);
+      renderList();
+    });
+    $('#search-clear').addEventListener('click', function () {
+      searchEl.value = '';
+      state.search = '';
+      $('#search-clear').classList.add('hidden');
+      renderList();
+      searchEl.focus();
+    });
+
+    /* chips + sort */
+    $('#chips').addEventListener('click', function (event) {
+      const chip = event.target.closest('[data-filter]');
+      if (!chip) return;
+      state.filter = chip.getAttribute('data-filter');
+      renderChips();
+      renderList();
+    });
+
+    $('#sort-btn').addEventListener('click', function () {
+      const order = ['recent', 'az', 'category'];
+      const next = order[(order.indexOf(state.sort) + 1) % order.length];
+      state.sort = next;
+      S.updateSettings({ sortMode: next }).catch(function () { /* ignore */ });
+      renderChips();
+      renderList();
+    });
+
+    /* list delegation */
+    $('#list').addEventListener('click', async function (event) {
+      const card = event.target.closest('.card');
+      if (!card) return;
+      const id = card.getAttribute('data-id');
+      const actionEl = event.target.closest('[data-action]');
+      if (!actionEl) return;
+      const action = actionEl.getAttribute('data-action');
+      const entry = S.getEntry(id);
+      if (!entry) { refresh(); return; }
+
+      if (action === 'open') openDetail(id);
+      if (action === 'fav') {
+        const updated = await S.toggleFavorite(id);
+        if (updated) { refresh(); toast(updated.favorite ? 'Added to favorites' : 'Removed from favorites'); }
+      }
+      if (action === 'copy-user') {
+        if (!entry.username) { toast('No username saved on this entry', 'err'); return; }
+        copyText(entry.username, 'Username', { secret: false });
+      }
+      if (action === 'copy-pass') {
+        if (!entry.password) { toast('No password saved on this entry', 'err'); return; }
+        copyText(entry.password, 'Password', { secret: true });
+      }
+      if (action === 'edit') openEntryForm(entry);
+      if (action === 'delete') confirmDelete(id);
+    });
+
+    $('#list').addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const main = event.target.closest('.card-main');
+      if (!main) return;
+      event.preventDefault();
+      const card = event.target.closest('.card');
+      if (card) openDetail(card.getAttribute('data-id'));
+    });
+
+    /* overlay */
+    overlay().addEventListener('click', function (event) {
+      if (event.target === overlay()) closeSheet();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        if (!overlay().classList.contains('hidden')) closeSheet();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        if (S.isUnlocked()) {
+          event.preventDefault();
+          $('#search').focus();
+        }
+      }
+    });
+
+    /* activity tracking for auto-lock */
+    ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(function (evt) {
+      document.addEventListener(evt, noteActivity, { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        state.hiddenAt = Date.now();
+      } else {
+        if (state.hiddenAt && S.isUnlocked()) {
+          const minutes = S.getSettings().autoLockMinutes;
+          if (minutes && Date.now() - state.hiddenAt > minutes * 60 * 1000) {
+            lockVault(true);
+          }
+        }
+        state.hiddenAt = null;
+        noteActivity();
+      }
+    });
+
+    window.addEventListener('beforeunload', function () {
+      // Key is memory-only; nothing to purge on disk. Drop references anyway.
+      S.lock();
+    });
+
+    window.addEventListener('online', function () {
+      // Offline-first: nothing to sync, but avoids a confusing stale banner
+      const banner = $('#banner');
+      if (banner && /offline/i.test(banner.textContent || '')) banner.classList.add('hidden');
+    });
+
+    window.addEventListener('offline', function () {
+      if (!S.isUnlocked()) return;
+      const banner = $('#banner');
+      banner.innerHTML = 'You are offline — that is fine, Keyring never needs the internet.';
+      banner.classList.remove('hidden');
+    });
+  }
+
+  function boot() {
+    S.storageAvailable();
+    applyStorageNotice();
+
+    bindEvents();
+
+    if (S.hasVault()) {
+      showUnlock();
+    } else {
+      showSetup();
+    }
+
+    if (window.KeyringPWA) window.KeyringPWA.register();
+    refreshInstallButton();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  /* expose a small surface for the PWA glue and debugging */
+  window.KeyringApp = {
+    lock: lockVault,
+    refresh: refresh,
+    toast: toast,
+    openImport: openImport,
+    openSettings: openSettings,
+    isStandalone: isStandalone,
+    onInstallAvailable: function () {
+      refreshInstallButton();
+      if (S.isUnlocked()) maybeShowInstallBanner();
+    },
+  };
+})();
+
+</script>
+</body>
+</html>

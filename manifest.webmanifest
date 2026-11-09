@@ -1,0 +1,51 @@
+{
+  "id": "keyring-password-vault",
+  "name": "Keyring — Password Vault",
+  "short_name": "Keyring",
+  "description": "A private, offline password vault. Entries are sealed on your device with AES-256 and never leave it.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0a0e17",
+  "theme_color": "#0b0f19",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities", "security"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add a password",
+      "short_name": "Add",
+      "description": "Open Keyring and create a new entry",
+      "url": "./?action=new",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

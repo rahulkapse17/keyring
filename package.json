@@ -1,0 +1,20 @@
+{
+  "name": "keyring-password-vault",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline-first, encrypted password vault PWA. No accounts, no servers, no tracking.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8899 --bind 0.0.0.0",
+    "serve": "python3 -m http.server 8899 --bind 0.0.0.0",
+    "test": "node tools/test-logic.mjs",
+    "test:ui": "node tools/test-ui.mjs",
+    "test:all": "node tools/test-logic.mjs && node tools/test-ui.mjs",
+    "icons": "python3 tools/make_icons.py",
+    "screenshots": "node tools/screenshots.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3",
+    "playwright": "^1.47.2"
+  }
+}

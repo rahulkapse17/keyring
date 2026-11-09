@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'self' data:; object-src 'none'; base-uri 'self';">
+<title>Keyring — Password Vault</title>
+<meta name="description" content="A private, offline password vault. Encrypted on your device with AES-256.">
+<meta name="theme-color" content="#0b0f19">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Keyring">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<!-- ============ inline icon sprite ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c9bff"/><stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2.5"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="M21 21l-4.6-4.6"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24M1 1l22 22"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.95 5.98 6.6.96-4.78 4.66 1.13 6.57L12 17.67l-5.9 3.1 1.13-6.57L2.45 9.54l6.6-.96z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4.5A2.5 2.5 0 0 1 10.5 2h3A2.5 2.5 0 0 1 16 4.5V6M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9.2 11.6l2 2 3.6-3.9"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="16.5" r="4.5"/><path d="M10.9 13.1 21 3M17.5 6.5l2.5 2.5M14.5 9.5l2.5 2.5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M3.6 9a9 9 0 0 1 14.8-3.4L21 8M21 15a9 9 0 0 1-14.8 3.4L3 16"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 9v5M12 17.2v.1"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 11 23l-9-9L11.6 4.4A2 2 0 0 1 13 3.8l6.8.3.3 6.8a2 2 0 0 1-.5 1.5z" transform="translate(1 -2)"/><circle cx="16.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<div id="banner" class="banner hidden" role="status"></div>
+
+<!-- ============ GATE (setup / unlock) ============ -->
+<section id="gate" class="gate" aria-label="Lock screen">
+  <div class="gate-card">
+    <div class="gate-logo" aria-hidden="true">
+      <svg viewBox="0 0 64 64" class="logo">
+        <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#logoGrad)"/>
+        <path d="M32 12.5l12.5 5.2v9.6c0 9.4-5.8 16.2-12.5 18.9-6.7-2.7-12.5-9.5-12.5-18.9v-9.6L32 12.5z" fill="rgba(11,15,25,.22)"/>
+        <circle cx="32" cy="27.5" r="4.6" fill="#fff"/>
+        <path d="M32 30.4l-2.7 8h5.4z" fill="#fff"/>
+      </svg>
+    </div>
+    <h1 class="gate-title">Keyring</h1>
+    <p class="gate-tagline">Your passwords, sealed on this device.</p>
+
+    <form id="setup-form" class="gate-form hidden" autocomplete="off" novalidate>
+      <h2 class="gate-h2">Create your master password</h2>
+      <p class="hint">This password encrypts your entire vault. It never leaves this device and <strong>cannot be recovered</strong> if you forget it.</p>
+      <label class="field">
+        <span class="field-label">Master password</span>
+        <div class="input-row">
+          <input id="setup-password" type="password" required autocomplete="new-password" spellcheck="false" placeholder="At least 8 characters">
+          <button type="button" class="icon-btn" data-toggle-pass="setup-password" aria-label="Show password"><svg class="icon"><use href="#i-eye"/></svg></button>
+        </div>
+      </label>
+      <div class="strength" id="setup-strength">
+        <div class="strength-track"><i></i></div>
+        <span class="strength-label">—</span>
+      </div>
+      <label class="field">
+        <span class="field-label">Confirm password</span>
+        <input id="setup-confirm" type="password" required autocomplete="new-password" spellcheck="false" placeholder="Type it again">
+      </label>
+      <p class="form-error hidden" id="setup-error" role="alert"></p>
+      <button type="submit" class="btn primary block" id="setup-submit">Create vault</button>
+    </form>
+
+    <form id="unlock-form" class="gate-form hidden" autocomplete="off" novalidate>
+      <h2 class="gate-h2">Unlock your vault</h2>
+      <label class="field">
+        <span class="field-label">Master password</span>
+        <div class="input-row">
+          <input id="unlock-password" type="password" required autocomplete="current-password" spellcheck="false" placeholder="Enter master password">
+          <button type="button" class="icon-btn" data-toggle-pass="unlock-password" aria-label="Show password"><svg class="icon"><use href="#i-eye"/></svg></button>
+        </div>
+      </label>
+      <p class="form-error hidden" id="unlock-error" role="alert"></p>
+      <button type="submit" class="btn primary block" id="unlock-submit">Unlock</button>
+      <p class="hint center">Forgot it? For your safety there is no reset — restore from a backup file if you made one.</p>
+    </form>
+
+    <p class="gate-foot"><svg class="icon tiny"><use href="#i-lock"/></svg> AES-256-GCM · PBKDF2-SHA256 · works offline</p>
+  </div>
+</section>
+
+<!-- ============ MAIN APP ============ -->
+<div id="app" class="app hidden">
+  <header class="topbar">
+   <div class="topbar-inner">
+    <div class="topbar-row">
+      <div class="brand">
+        <svg viewBox="0 0 64 64" class="logo small" aria-hidden="true" width="30" height="30">
+          <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#logoGrad)"/>
+          <circle cx="32" cy="27.5" r="4.6" fill="#fff"/>
+          <path d="M32 30.4l-2.7 8h5.4z" fill="#fff"/>
+        </svg>
+        <span>Keyring</span>
+      </div>
+      <div class="top-actions">
+        <button id="btn-install" class="icon-btn hidden" title="Install app" aria-label="Install app"><svg class="icon"><use href="#i-download"/></svg></button>
+        <button id="btn-generator" class="icon-btn" title="Password generator" aria-label="Password generator"><svg class="icon"><use href="#i-dice"/></svg></button>
+        <button id="btn-settings" class="icon-btn" title="Settings" aria-label="Settings"><svg class="icon"><use href="#i-settings"/></svg></button>
+        <button id="btn-lock" class="icon-btn" title="Lock vault" aria-label="Lock vault"><svg class="icon"><use href="#i-lock"/></svg></button>
+      </div>
+    </div>
+
+    <div class="search-row">
+      <svg class="icon search-icon"><use href="#i-search"/></svg>
+      <input id="search" type="search" placeholder="Search title, user, tag…" autocomplete="off" spellcheck="false" aria-label="Search vault">
+      <button id="search-clear" class="icon-btn tiny-btn hidden" aria-label="Clear search"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+
+    <div class="filter-bar">
+      <div id="chips" class="chips" role="tablist" aria-label="Categories"></div>
+      <button id="sort-btn" class="sort-btn" title="Change sort order">Recent</button>
+    </div>
+   </div>
+  </header>
+
+  <main class="list-wrap">
+    <div id="meta-row" class="meta-row"></div>
+    <section id="list" class="list" aria-live="polite"></section>
+
+    <div id="empty" class="empty hidden">
+      <div class="empty-art" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="50" fill="rgba(124,155,255,.08)"/>
+          <circle cx="60" cy="60" r="36" fill="rgba(124,155,255,.10)"/>
+          <path d="M60 30l22 9v17c0 16.5-10 28.5-22 33-12-4.5-22-16.5-22-33V39l22-9z" fill="none" stroke="rgba(124,155,255,.6)" stroke-width="3" stroke-linejoin="round"/>
+          <circle cx="60" cy="56" r="7" fill="rgba(124,155,255,.8)"/>
+          <path d="M60 60.5l-4 13h8z" fill="rgba(124,155,255,.8)"/>
+        </svg>
+      </div>
+      <h2 id="empty-title">Your vault is empty</h2>
+      <p id="empty-msg">Add your first login and it will be encrypted before it touches storage.</p>
+      <button class="btn primary" id="empty-cta"><svg class="icon"><use href="#i-plus"/></svg> Add password</button>
+    </div>
+  </main>
+
+  <button id="fab" class="fab" aria-label="Add new password" title="Add new password">
+    <svg class="icon"><use href="#i-plus"/></svg>
+  </button>
+</div>
+
+<!-- ============ SHEET / MODAL ============ -->
+<div id="overlay" class="overlay hidden" aria-hidden="true">
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
+<div id="toast-wrap" class="toast-wrap" aria-live="polite"></div>
+
+<noscript><p style="padding:2rem;color:#e8edf7;text-align:center">Keyring needs JavaScript to encrypt and store your vault.</p></noscript>
+
+<script src="assets/js/crypto.js" defer></script>
+<script src="assets/js/storage.js" defer></script>
+<script src="assets/js/pwa.js" defer></script>
+<script src="assets/js/app.js" defer></script>
+</body>
+</html>
