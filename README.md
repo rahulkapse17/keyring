@@ -1,5 +1,9 @@
 # Keyring — your own password vault
 
+> 🚀 **Live App / Install URL:**  
+> ### 👉 **[https://rahulkapse17.github.io/keyring/](https://rahulkapse17.github.io/keyring/)** 👈  
+> *(Open this link on your phone or computer to use or install the app)*
+
 A complete, installable password manager that runs entirely on your phone.
 No account, no server, no subscription, no tracking. Your vault is encrypted
 on the device with **AES-256-GCM** and the key is derived from your master
@@ -10,25 +14,66 @@ desktop** from a single URL, and works completely offline afterwards.
 
 ---
 
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph Device ["Your Device (100% Local — Zero Outbound Network Requests)"]
+        subgraph UI ["UI Layer (DOM & PWA Shell)"]
+            HTML["index.html\n(Semantic HTML Shell & Sheets)"]
+            CSS["assets/css/app.css\n(Mobile-first Dark Theme)"]
+            APP["assets/js/app.js\n(UI Controller, Search, Rate Limiter)"]
+        end
+
+        subgraph Offline ["Offline & Service Layer"]
+            PWA["assets/js/pwa.js\n(PWA Install Lifecycle)"]
+            SW["sw.js (Service Worker)\n(Pre-caches App Assets for Offline Use)"]
+        end
+
+        subgraph Security ["Core Security & State Engine"]
+            STORE["assets/js/storage.js\n(State Machine, History, Trash, CSV)"]
+            CRYPTO["assets/js/crypto.js\n(PBKDF2 310k iter, AES-GCM, TOTP)"]
+        end
+
+        subgraph Storage ["Persistence at Rest"]
+            LS[("Browser localStorage\nkey: 'keyring.vault.v1'\n(Sealed AES-256-GCM Ciphertext)")]
+        end
+    end
+
+    HTML <--> APP
+    CSS --> HTML
+    APP <--> STORE
+    STORE <--> CRYPTO
+    STORE <--> LS
+    PWA <--> SW
+    SW -. Serves offline from cache .-> HTML
+```
+
+---
+
 ## What it does
 
 | Feature | Detail |
 |---|---|
 | **Save logins** | Title, username/email, password, website, category, tags, free-form notes |
-| **Copy anything** | One-tap copy for username, password, website or notes |
-| **Clipboard auto-clear** | Copied passwords are wiped from the clipboard after 15 s / 30 s / 60 s / 2 min (your choice) |
+| **2FA / TOTP Authenticator** | Built-in RFC 6238 two-factor code generator with live 30s countdown and copy |
+| **Password History** | Automatically preserves previous passwords per entry to prevent accidental lockout |
+| **Soft Delete (Trash)** | Deleted entries move to Trash with restore or permanent wipe options |
+| **CSV Import** | Import logins directly from Google Chrome, Firefox, Bitwarden, or 1Password |
+| **Copy anything** | One-tap copy for username, password, website, notes, or 2FA code |
+| **Clipboard auto-clear** | Copied passwords are wiped from the clipboard after 15 s / 30 s / 60 s / 2 min |
 | **Edit** | Every field editable, with a change history stamp (`Updated 3h ago`) |
-| **Delete** | Two-step confirmation, with a clear "this cannot be undone" warning |
+| **Delete** | Two-step confirmation with safety checks |
 | **Search** | Instant search across title, username, website, notes, category and tags |
 | **Organise** | Categories (Email, Banking, Social, Work, Shopping, Dev…), multi-tag support, favourites |
-| **Password generator** | Random strings (length + character classes + avoid look-alikes) or memorable passphrases, with a live entropy meter |
+| **Password generator** | Random strings (length + character classes + avoid look-alikes) or memorable passphrases |
 | **Vault health** | Flags weak and reused passwords at a glance |
-| **Auto-lock** | Locks after 1 / 5 / 15 / 30 / 60 minutes of inactivity, or instantly via the lock button |
-| **Masked by default** | Passwords are hidden in the list and revealed only on request (auto-hides again after 30 s) |
-| **Encrypted backup** | One `.json` file you can move to any other phone and import |
+| **Auto-lock & Rate Limiting** | Locks after inactivity; exponential cooldown on failed unlock attempts |
+| **Masked by default** | Passwords are hidden in the list and revealed only on request (auto-hides after 30 s) |
+| **Encrypted backup** | One `.json` file you can move to any other phone or PC and import |
 | **Master password change** | Re-keys the whole vault (and re-encrypts every entry) |
 | **Works offline** | Service worker caches the entire app; no network required after first load |
-| **No plaintext on disk** | Verified by the test suite: titles, usernames and passwords never appear in `localStorage` |
+| **No plaintext on disk** | Titles, usernames, passwords, notes, and preferences never appear unencrypted |
 
 ---
 
@@ -69,19 +114,18 @@ desktop** from a single URL, and works completely offline afterwards.
 
 ## Install it on a phone
 
-The app must be opened from a URL (http**s** or `localhost`). Files opened directly with
-`file://` do not get a service worker, so they will not install as an app.
+Open the live URL: **[https://rahulkapse17.github.io/keyring/](https://rahulkapse17.github.io/keyring/)**
 
 ### Android (Chrome, Edge, Samsung Internet)
 
-1. Open the app URL.
-2. Tap **Install** in the top bar — or the ⋮ menu → **Install app** / **Add to Home screen**.
-3. Launch it from the home-screen icon: full screen, no address bar, works offline.
+1. Open **[https://rahulkapse17.github.io/keyring/](https://rahulkapse17.github.io/keyring/)** in Chrome.
+2. Tap the **Install** icon in Keyring's top bar — or tap the ⋮ menu → **Install app** / **Add to Home screen**.
+3. Launch it from the home-screen icon: full screen, no address bar, works 100% offline.
 
 ### iPhone / iPad (Safari)
 
-1. Open the app URL **in Safari** (it must not be an in-app browser).
-2. Tap the **Share** icon → **Add to Home Screen** → **Add**.
+1. Open **[https://rahulkapse17.github.io/keyring/](https://rahulkapse17.github.io/keyring/)** **in Safari** (must be Safari, not Chrome/Instagram).
+2. Tap the **Share** icon at the bottom (`[↑]`) → **Add to Home Screen** → **Add**.
 3. Launch it from the home-screen icon.
 
 > iOS note: Safari can evict website storage for sites you barely use. Installing to the
